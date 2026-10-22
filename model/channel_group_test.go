@@ -185,6 +185,23 @@ func testWidenChannelGroupColumn(t *testing.T, db *gorm.DB) {
 	recorder := &migrationSQLRecorder{}
 	require.NoError(t, widenChannelGroupColumn(db.Session(&gorm.Session{Logger: recorder}), table))
 	assert.Empty(t, recorder.schemaMutations())
+
+	// The struct tag is what a fresh install gets. GORM's AutoMigrate does not
+	// resize this column in either direction once the table exists, so a tag
+	// that drifted back to varchar(64) would only show up on new databases.
+	freshTable := fmt.Sprintf("channel_group_fresh_%d", time.Now().UnixNano())
+	require.NoError(t, db.Table(freshTable).AutoMigrate(&Channel{}))
+	t.Cleanup(func() { _ = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", freshTable)).Error })
+	freshTypes, err := db.Migrator().ColumnTypes(freshTable)
+	require.NoError(t, err)
+	var freshWidth int64
+	for _, columnType := range freshTypes {
+		if columnType.Name() != "group" {
+			continue
+		}
+		freshWidth, _ = columnType.Length()
+	}
+	assert.EqualValues(t, ChannelGroupListColumnWidth, freshWidth)
 }
 
 func TestWidenChannelGroupColumnMySQL(t *testing.T) {
