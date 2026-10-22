@@ -322,6 +322,64 @@ func is64BitIntegerType(dbType common.DatabaseType, dataType string) bool {
 	}
 }
 
+// migrateChannelGroupColumnWidth widens channels.group from varchar(64) to
+// varchar(255). The column holds every group of a channel in one
+// comma-separated string, so 64 characters was the budget for the whole list:
+// a channel with a few long group names filled it and the next admin save
+// failed with MySQL 1406 under strict mode. abilities.group stays varchar(64)
+// because it stores a single group name per row and is part of the primary key.
+func migrateChannelGroupColumnWidth(db *gorm.DB) error {
+	return widenChannelGroupColumn(db, "channels")
+}
+
+func widenChannelGroupColumn(db *gorm.DB, tableName string) error {
+	if db == nil {
+		return nil
+	}
+	dialect := db.Dialector.Name()
+	if dialect == "sqlite" {
+		// SQLite ignores varchar lengths (type affinity), so there is nothing
+		// to widen and MODIFY COLUMN does not exist there.
+		return nil
+	}
+	if !db.Migrator().HasTable(tableName) {
+		return nil
+	}
+	columnTypes, err := db.Migrator().ColumnTypes(tableName)
+	if err != nil {
+		return fmt.Errorf("inspect %s.group: %w", tableName, err)
+	}
+	width := int64(-1)
+	for _, columnType := range columnTypes {
+		if columnType.Name() != "group" {
+			continue
+		}
+		if length, ok := columnType.Length(); ok {
+			width = length
+		}
+		break
+	}
+	// A column without a reported length is already text-like. Both cases are
+	// wide enough, and this migration never shrinks a column.
+	if width < 0 || width >= ChannelGroupListColumnWidth {
+		return nil
+	}
+	var alterSQL string
+	switch dialect {
+	case "mysql":
+		alterSQL = fmt.Sprintf("ALTER TABLE `%s` MODIFY COLUMN `group` varchar(%d) DEFAULT 'default'", tableName, ChannelGroupListColumnWidth)
+	case "postgres":
+		alterSQL = fmt.Sprintf(`ALTER TABLE "%s" ALTER COLUMN "group" TYPE varchar(%d)`, tableName, ChannelGroupListColumnWidth)
+	default:
+		return nil
+	}
+	if err := db.Exec(alterSQL).Error; err != nil {
+		return fmt.Errorf("widen %s.group to varchar(%d): %w", tableName, ChannelGroupListColumnWidth, err)
+	}
+	common.SysLog(common.LogText("widened %s.group from varchar(%d) to varchar(%d)", tableName, width, ChannelGroupListColumnWidth))
+	return nil
+}
+
 func migrateDB() error {
 	if err := migrateTokenKeyUniqueness(DB); err != nil {
 		return err
@@ -337,6 +395,9 @@ func migrateDB() error {
 	}
 	if err := migrateOptionPrimaryKey(DB); err != nil {
 		common.SysError(common.LogText("failed to migrate options primary key: %s", err.Error()))
+	}
+	if err := migrateChannelGroupColumnWidth(DB); err != nil {
+		return err
 	}
 
 	err := DB.AutoMigrate(

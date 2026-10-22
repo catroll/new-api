@@ -530,6 +530,9 @@ func validateChannel(channel *model.Channel, isAdd bool) error {
 	if channel == nil {
 		return fmt.Errorf("channel cannot be empty")
 	}
+	if err := model.ValidateChannelGroupList(channel.Group); err != nil {
+		return err
+	}
 
 	// 校验 channel settings
 	if err := channel.ValidateSettings(); err != nil {

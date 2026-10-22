@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -19,6 +20,15 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// ChannelGroupListColumnWidth is the width of channels.group. The column stores
+// every group of a channel in one comma-separated string, so it is the budget
+// for the whole list rather than for a single group name.
+const ChannelGroupListColumnWidth = 255
+
+// ChannelGroupNameColumnWidth is the width of abilities.group, which keeps one
+// group name per row and is part of the primary key.
+const ChannelGroupNameColumnWidth = 64
 
 type Channel struct {
 	Id                 int     `json:"id"`
@@ -316,6 +326,23 @@ func (channel *Channel) GetGroups() []string {
 	return groups
 }
 
+// ValidateChannelGroupList rejects a group list that the schema cannot store.
+// channels.group keeps the whole list in one varchar(255) and abilities.group
+// keeps one name per row in a varchar(64) primary key column, so an overrun
+// reaches the database as `1406 Data too long` and rejects the entire save.
+func ValidateChannelGroupList(group string) error {
+	if n := utf8.RuneCountInString(group); n > ChannelGroupListColumnWidth {
+		return fmt.Errorf("channel group list must not exceed %d characters, got %d", ChannelGroupListColumnWidth, n)
+	}
+	for _, name := range strings.Split(group, ",") {
+		name = strings.TrimSpace(name)
+		if n := utf8.RuneCountInString(name); n > ChannelGroupNameColumnWidth {
+			return fmt.Errorf("group name %q must not exceed %d characters, got %d", name, ChannelGroupNameColumnWidth, n)
+		}
+	}
+	return nil
+}
+
 func (channel *Channel) GetOtherInfo() map[string]any {
 	otherInfo := make(map[string]any)
 	if channel.OtherInfo != "" {
@@ -458,6 +485,11 @@ func BatchInsertChannels(channels []Channel) error {
 	if len(channels) == 0 {
 		return nil
 	}
+	for i := range channels {
+		if err := ValidateChannelGroupList(channels[i].Group); err != nil {
+			return err
+		}
+	}
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return tx.Error
@@ -551,6 +583,9 @@ func (channel *Channel) GetStatusCodeMapping() string {
 }
 
 func (channel *Channel) Insert() error {
+	if err := ValidateChannelGroupList(channel.Group); err != nil {
+		return err
+	}
 	var err error
 	err = DB.Create(channel).Error
 	if err != nil {
@@ -561,6 +596,9 @@ func (channel *Channel) Insert() error {
 }
 
 func (channel *Channel) Update() error {
+	if err := ValidateChannelGroupList(channel.Group); err != nil {
+		return err
+	}
 	// If this is a multi-key channel, recalculate MultiKeySize based on the current key list to avoid inconsistency after editing keys
 	if channel.ChannelInfo.IsMultiKey {
 		var keyStr string
@@ -869,6 +907,9 @@ func EditChannelByTag(tag string, newTag *string, modelMapping *string, models *
 		updateData.Models = *models
 	}
 	if group != nil && *group != "" {
+		if err := ValidateChannelGroupList(*group); err != nil {
+			return err
+		}
 		shouldReCreateAbilities = true
 		updateData.Group = *group
 	}
