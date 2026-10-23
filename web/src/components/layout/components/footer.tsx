@@ -149,6 +149,36 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
   )
 }
 
+/**
+ * WeChat contact card at the bottom-right of the footer, level with the tagline.
+ * The QR needs a fixed white card because the file is a transparent code that
+ * disappears against the dark theme; 96 CSS pixels from a 256 px source stays
+ * crisp on 2x screens without competing with the brand.
+ */
+function ContactQr() {
+  const { t } = useTranslation()
+  return (
+    <div className='flex shrink-0 items-center justify-center gap-3 md:justify-end'>
+      <div className='text-center md:text-right'>
+        <p className='text-sm font-medium'>{t('Contact me on WeChat')}</p>
+        <p className='text-muted-foreground/60 mt-1 max-w-64 text-xs leading-relaxed text-balance'>
+          {t('Scan the QR code to add me as a friend.')}
+        </p>
+      </div>
+      <div className='shrink-0 rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-black/5'>
+        <img
+          src='/qr-contact-wechat.png'
+          alt={t('WeChat QR code')}
+          width={96}
+          height={96}
+          loading='lazy'
+          className='size-24 rounded-md'
+        />
+      </div>
+    </div>
+  )
+}
+
 export function Footer(props: FooterProps) {
   const { t } = useTranslation()
   const {
@@ -251,7 +281,7 @@ export function Footer(props: FooterProps) {
       className={cn('border-border/40 relative z-10 border-t', props.className)}
     >
       <div className='mx-auto max-w-6xl px-6 py-12 md:py-16'>
-        <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
+        <div className='flex flex-col justify-between gap-10 md:flex-row md:items-end md:gap-16'>
           {/* Brand column */}
           <div className='shrink-0'>
             <Link to='/' className='group flex items-center gap-2.5'>
@@ -288,6 +318,8 @@ export function Footer(props: FooterProps) {
               ))}
             </div>
           )}
+
+          <ContactQr />
         </div>
 
         {/* Copyright + optional legal links inline on the left, project
