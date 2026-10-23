@@ -234,7 +234,12 @@ export function PublicHeader(props: PublicHeaderProps) {
                   )}
                 </span>
               </Link>
-              <SystemUpdateAction presentation='version' />
+              {/*
+                Public pages keep the administrator update indicator but never
+                show the running build version; that label belongs to the
+                console header only.
+              */}
+              <SystemUpdateAction presentation='version' showVersion={false} />
             </div>
 
             {/* Desktop nav */}

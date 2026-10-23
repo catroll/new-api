@@ -445,6 +445,21 @@ describe('version label presentation', () => {
     )
     await waitFor(() => expect(trigger).toHaveAttribute('aria-busy', 'false'))
   })
+
+  test('hides the version, including its tooltip, when the surface asks for it', async () => {
+    render(<SystemUpdateAction presentation='version' showVersion={false} />, {
+      wrapper: Wrapper,
+    })
+    const trigger = await screen.findByRole('button', {
+      name: 'New version available: v1.0.0-rc.36',
+    })
+    expect(within(trigger).queryByText('v1.0.0-rc.35')).not.toBeInTheDocument()
+    expect(
+      within(trigger).queryByText('Update available')
+    ).not.toBeInTheDocument()
+    expect(trigger.getAttribute('title')).not.toContain('v1.0.0-rc.35')
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+  })
 })
 
 describe('version notification preferences', () => {

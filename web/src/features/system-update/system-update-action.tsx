@@ -39,6 +39,12 @@ type SystemUpdateActionProps = {
   /** Version labels expand when the header's system-brand container has room. */
   presentation?: 'action' | 'version'
   compact?: boolean
+  /**
+   * Drop the version label (and the version in its tooltip) while keeping the
+   * update indicator, for surfaces outside the console where the exact build
+   * version must not be shown. Only affects `presentation='version'`.
+   */
+  showVersion?: boolean
 }
 
 export function SystemUpdateAction(props: SystemUpdateActionProps) {
@@ -55,6 +61,7 @@ function AdminSystemUpdateAction(props: SystemUpdateActionProps) {
   const [open, setOpen] = useState(false)
   const compact = props.compact ?? true
   const versionPresentation = props.presentation === 'version'
+  const showVersion = versionPresentation && (props.showVersion ?? true)
   const version = update.currentVersion?.trim() || t('Unknown version')
   const label = update.shouldNotify
     ? t('Update available')
@@ -68,7 +75,7 @@ function AdminSystemUpdateAction(props: SystemUpdateActionProps) {
     description = t('Failed to check for updates')
   }
   const updateAnnouncement = update.shouldNotify ? description : ''
-  if (versionPresentation) {
+  if (showVersion) {
     const versionDescription = t(
       'System updates, current version: {{version}}',
       { version }
@@ -99,21 +106,25 @@ function AdminSystemUpdateAction(props: SystemUpdateActionProps) {
         <HugeiconsIcon
           icon={update.shouldNotify ? ArrowUp01Icon : InformationCircleIcon}
           className={cn(
-            '@min-[22rem]/system-brand:hidden',
+            showVersion && '@min-[22rem]/system-brand:hidden',
             update.shouldNotify && 'text-primary'
           )}
           aria-hidden='true'
         />
-        <span className='hidden max-w-32 truncate font-mono text-xs @min-[22rem]/system-brand:inline'>
-          {version}
-        </span>
-        {update.shouldNotify && (
-          <Badge
-            variant='secondary'
-            className='bg-primary/10 text-primary hidden h-5 px-1.5 text-[10px] @min-[22rem]/system-brand:inline-flex'
-          >
-            {t('Update available')}
-          </Badge>
+        {showVersion && (
+          <>
+            <span className='hidden max-w-32 truncate font-mono text-xs @min-[22rem]/system-brand:inline'>
+              {version}
+            </span>
+            {update.shouldNotify && (
+              <Badge
+                variant='secondary'
+                className='bg-primary/10 text-primary hidden h-5 px-1.5 text-[10px] @min-[22rem]/system-brand:inline-flex'
+              >
+                {t('Update available')}
+              </Badge>
+            )}
+          </>
         )}
       </>
     )
@@ -135,8 +146,11 @@ function AdminSystemUpdateAction(props: SystemUpdateActionProps) {
           aria-busy={update.checking}
           className={cn(
             'relative',
-            versionPresentation &&
+            showVersion &&
               'text-muted-foreground size-8 px-0 @min-[22rem]/system-brand:h-7 @min-[22rem]/system-brand:w-auto @min-[22rem]/system-brand:gap-1.5 @min-[22rem]/system-brand:px-1.5',
+            versionPresentation &&
+              !showVersion &&
+              'text-muted-foreground size-8 px-0',
             !versionPresentation &&
               compact &&
               'size-8 px-0 lg:w-auto lg:gap-1.5 lg:px-2.5',
@@ -151,9 +165,8 @@ function AdminSystemUpdateAction(props: SystemUpdateActionProps) {
               aria-hidden='true'
               className={cn(
                 'absolute -end-0.5 -top-0.5 size-1.5 min-w-0 p-0',
-                versionPresentation
-                  ? '@min-[22rem]/system-brand:hidden'
-                  : 'lg:hidden'
+                showVersion && '@min-[22rem]/system-brand:hidden',
+                !versionPresentation && 'lg:hidden'
               )}
             />
           )}
