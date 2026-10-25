@@ -17,6 +17,7 @@ func UnbindAccountOAuth(identity AuthIdentity, providerID int) error {
 		Password: common.PasswordLoginEnabled,
 		Passkey:  system_setting.PasskeySettingsSnapshot().Enabled,
 		WeChat:   common.WeChatAuthEnabled,
+		Phone:    system_setting.SMSSettingsSnapshot().LoginEnabled,
 	}
 	for _, provider := range oauth.GetAllProviders() {
 		if !provider.IsEnabled() {

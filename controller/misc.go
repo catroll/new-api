@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -42,6 +43,7 @@ func GetStatus(c *gin.Context) {
 
 	cs := console_setting.GetConsoleSetting()
 	passkeySetting := system_setting.PasskeySettingsSnapshot()
+	smsSetting := system_setting.SMSSettingsSnapshot()
 	common.OptionMapRWMutex.RLock()
 	defer common.OptionMapRWMutex.RUnlock()
 
@@ -50,7 +52,11 @@ func GetStatus(c *gin.Context) {
 	data := gin.H{
 		"version":                     common.Version,
 		"start_time":                  common.StartTime,
-		"email_verification":          common.EmailVerificationEnabled,
+		"email_verification":          common.EmailVerificationEnabled && !(smsSetting.Enabled && smsSetting.RequirePhone),
+		"sms_enabled":                 smsSetting.Enabled,
+		"sms_login_enabled":           smsSetting.Enabled && smsSetting.LoginEnabled,
+		"sms_require_phone":           smsSetting.Enabled && smsSetting.RequirePhone,
+		"sms_default_country_code":    firstCountryCode(smsSetting.AllowedCountryCodes),
 		"github_oauth":                common.GitHubOAuthEnabled,
 		"github_client_id":            common.GitHubClientId,
 		"discord_oauth":               system_setting.GetDiscordSettings().Enabled,
@@ -327,4 +333,17 @@ func ResetPassword(c *gin.Context) {
 		"data":    password,
 	})
 	return
+}
+
+// firstCountryCode returns the default dialing prefix shown by the web console.
+func firstCountryCode(allowed string) string {
+	for _, code := range strings.Split(allowed, ",") {
+		if code = strings.TrimSpace(code); code != "" {
+			if !strings.HasPrefix(code, "+") {
+				return "+" + code
+			}
+			return code
+		}
+	}
+	return "+86"
 }

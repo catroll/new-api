@@ -296,6 +296,11 @@ func smsDailyTTL() time.Duration {
 	return time.Until(endOfDay) + smsDailyBudgetGrace
 }
 
+// GenerateSMSCode returns a random numeric code of the documented length.
+func GenerateSMSCode() (string, error) {
+	return generateSMSCode(smsCodeLength)
+}
+
 func generateSMSCode(length int) (string, error) {
 	limit := big.NewInt(1)
 	for range length {

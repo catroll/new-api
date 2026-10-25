@@ -85,7 +85,7 @@ func GetOptions(c *gin.Context) {
 	optionValues := make(map[string]string)
 	common.OptionMapRWMutex.Lock()
 	for k, v := range common.OptionMap {
-		if k == "theme.frontend" || k == "billing_setting.billing_mode" || k == "billing_setting.billing_expr" || k == "ResendKeyConfigured" {
+		if k == "theme.frontend" || k == "billing_setting.billing_mode" || k == "billing_setting.billing_expr" || k == "ResendKeyConfigured" || k == "sms.sms_key_configured" {
 			continue
 		}
 		value := common.Interface2String(v)
@@ -93,7 +93,8 @@ func GetOptions(c *gin.Context) {
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
 			strings.HasSuffix(k, "secret") ||
-			strings.HasSuffix(k, "api_key")
+			strings.HasSuffix(k, "api_key") ||
+			strings.HasSuffix(k, "_key")
 		if isSensitiveKey {
 			continue
 		}
@@ -107,6 +108,9 @@ func GetOptions(c *gin.Context) {
 	}
 	options = append(options, &model.Option{
 		Key: "ResendKeyConfigured", Value: strconv.FormatBool(strings.TrimSpace(common.OptionMap["ResendApiKey"]) != ""),
+	})
+	options = append(options, &model.Option{
+		Key: "sms.sms_key_configured", Value: strconv.FormatBool(strings.TrimSpace(common.OptionMap["sms.sms_key"]) != ""),
 	})
 	common.OptionMapRWMutex.Unlock()
 	// Display the same effective expressions used by pricing and settlement,
@@ -405,6 +409,19 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	}
+	if strings.HasPrefix(option.Key, "sms.") {
+		if err := validateSMSOption(option.Key, option.Value.(string)); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+	if option.Key == "EmailVerificationEnabled" && option.Value.(string) == "true" {
+		smsSettings := system_setting.SMSSettingsSnapshot()
+		if smsSettings.Enabled && smsSettings.RequirePhone {
+			common.ApiErrorT(c, "SMS verification and email verification cannot be enabled at the same time")
+			return
+		}
+	}
 	if model.IsPasskeyDomainOption(option.Key) {
 		change, updateErr := model.UpdatePasskeyDomainOptions(map[string]string{option.Key: option.Value.(string)}, false, "")
 		if updateErr != nil {
@@ -433,4 +450,125 @@ func UpdateOption(c *gin.Context) {
 		"success": true,
 		"message": "",
 	})
+}
+
+// validateSMSOption applies one sms.* change to a copy of the settings and
+// checks both the provider configuration and the policy combinations that are
+// not expressible in Validate alone.
+func validateSMSOption(key, value string) error {
+	settings := system_setting.SMSSettingsSnapshot()
+	if err := applySMSOptionValue(&settings, strings.TrimPrefix(key, "sms."), value); err != nil {
+		return err
+	}
+	if err := settings.Validate(); err != nil {
+		return err
+	}
+	if settings.RequirePhone && !settings.Enabled {
+		return common.NewMessage("Enable SMS before requiring a phone at registration")
+	}
+	if settings.Enabled && settings.RequirePhone {
+		if common.EmailVerificationEnabled {
+			return common.NewMessage("SMS verification and email verification cannot be enabled at the same time")
+		}
+		if !common.PasswordRegisterEnabled {
+			return common.NewMessage("Enable password registration before requiring a phone, otherwise no account could be created")
+		}
+	}
+	return nil
+}
+
+func applySMSOptionValue(settings *system_setting.SMSSettings, field, value string) error {
+	parseBool := func() (bool, error) { return strconv.ParseBool(value) }
+	parseInt := func() (int, error) { return strconv.Atoi(value) }
+	switch field {
+	case "enabled":
+		parsed, err := parseBool()
+		if err != nil {
+			return common.NewMessage("SMS enabled must be true or false")
+		}
+		settings.Enabled = parsed
+	case "login_enabled":
+		parsed, err := parseBool()
+		if err != nil {
+			return common.NewMessage("SMS login enabled must be true or false")
+		}
+		settings.LoginEnabled = parsed
+	case "require_phone":
+		parsed, err := parseBool()
+		if err != nil {
+			return common.NewMessage("SMS require phone must be true or false")
+		}
+		settings.RequirePhone = parsed
+	case "provider":
+		settings.Provider = value
+	case "api":
+		settings.API = value
+	case "api_base":
+		settings.APIBase = value
+	case "sms_user":
+		settings.SMSUser = value
+	case "sms_key":
+		settings.SMSKey = value
+	case "sign_name":
+		settings.SignName = value
+	case "allowed_country_codes":
+		settings.AllowedCountryCodes = value
+	case "template_param_key":
+		settings.TemplateParamKey = value
+	case "sign_id":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS sign id must be a number")
+		}
+		settings.SignID = parsed
+	case "template_id":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS template id must be a number")
+		}
+		settings.TemplateID = parsed
+	case "msg_type":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS message type must be a number")
+		}
+		settings.MsgType = parsed
+	case "code_ttl_seconds":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS code TTL must be a number")
+		}
+		settings.CodeTTLSeconds = parsed
+	case "resend_seconds":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS resend interval must be a number")
+		}
+		settings.ResendSeconds = parsed
+	case "max_attempts":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS max attempts must be a number")
+		}
+		settings.MaxAttempts = parsed
+	case "phone_daily_limit":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS phone daily limit must be a number")
+		}
+		settings.PhoneDailyLimit = parsed
+	case "ip_hourly_limit":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS IP hourly limit must be a number")
+		}
+		settings.IPHourlyLimit = parsed
+	case "daily_quota":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS daily quota must be a number")
+		}
+		settings.DailyQuota = parsed
+	}
+	return nil
 }

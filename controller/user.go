@@ -19,6 +19,7 @@ import (
 	"github.com/QuantumNous/new-api/service/authz"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/QuantumNous/new-api/constant"
 
@@ -109,6 +110,8 @@ func loginMethodFromContext(c *gin.Context) string {
 		return "password"
 	case "/api/user/login/2fa":
 		return "2fa"
+	case "/api/user/login/sms":
+		return "sms"
 	case "/api/user/passkey/login/finish":
 		return "passkey"
 	case "/api/oauth/wechat":
@@ -239,7 +242,35 @@ func Register(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid input {{error}}", map[string]any{"error": err.Error()})
 		return
 	}
-	if common.EmailVerificationEnabled {
+
+	// The SMS switch makes the phone mandatory. It is mutually exclusive with
+	// email verification, and when both are somehow set the phone wins.
+	smsSettings := system_setting.SMSSettingsSnapshot()
+	phoneRequired := smsSettings.Enabled && smsSettings.RequirePhone
+	phoneToBind := ""
+	if phoneRequired {
+		phone, err := service.NormalizePhoneInput(user.Phone)
+		if err != nil {
+			writeSMSError(c, err)
+			return
+		}
+		if strings.TrimSpace(user.PhoneCode) == "" {
+			common.ApiErrorT(c, "Please enter the phone verification code")
+			return
+		}
+		if err := model.EnsurePhoneAvailable(phone, 0); err != nil {
+			writeSMSError(c, err)
+			return
+		}
+		if err := service.VerifySMSCode(c.Request.Context(), service.SMSCodePurposeRegister, phone, user.PhoneCode, smsSettings.MaxAttempts); err != nil {
+			writeSMSError(c, err)
+			return
+		}
+		phoneToBind = phone
+	}
+
+	emailVerification := common.EmailVerificationEnabled && !phoneRequired
+	if emailVerification {
 		if user.Email == "" || user.VerificationCode == "" {
 			common.ApiErrorT(c, "Email verification is enabled, please enter email address and verification code")
 			return
@@ -258,7 +289,7 @@ func Register(c *gin.Context) {
 		}
 	}
 	emailForExistCheck := ""
-	if common.EmailVerificationEnabled {
+	if emailVerification {
 		emailForExistCheck = user.Email
 	}
 	exist, err := model.CheckUserExistOrDeleted(user.Username, emailForExistCheck)
@@ -280,12 +311,19 @@ func Register(c *gin.Context) {
 		InviterId:   inviterId,
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
 	}
-	if common.EmailVerificationEnabled {
+	if emailVerification {
 		cleanUser.Email = user.Email
+	}
+	if phoneRequired {
+		cleanUser.Phone = phoneToBind
 	}
 	if err := cleanUser.Insert(inviterId); err != nil {
 		if errors.Is(err, model.ErrEmailAlreadyTaken) {
 			common.ApiErrorT(c, "Email address is already in use")
+			return
+		}
+		if errors.Is(err, model.ErrPhoneAlreadyTaken) {
+			common.ApiErrorT(c, "This phone number is already in use")
 			return
 		}
 		common.ApiError(c, err)
@@ -503,6 +541,8 @@ func buildSelfUserData(user *model.User) map[string]any {
 		"role":              user.Role,
 		"status":            user.Status,
 		"email":             user.Email,
+		"phone":             common.MaskPhone(user.Phone),
+		"has_phone":         user.Phone != "",
 		"github_id":         user.GitHubId,
 		"discord_id":        user.DiscordId,
 		"oidc_id":           user.OidcId,
