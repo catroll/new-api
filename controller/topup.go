@@ -32,6 +32,20 @@ func GetTopUpInfo(c *gin.Context) {
 		payMethods = []map[string]string{}
 	}
 
+	// The direct Alipay adapter replaces the aggregator's "alipay" channel: leaving
+	// both would show two indistinguishable 支付宝 buttons. Replacing in place
+	// keeps the button order stable on the wallet page.
+	enableAlipay := isAlipayTopUpEnabled()
+	if enableAlipay {
+		alipayMethod := map[string]string{
+			"name":      "支付宝",
+			"type":      model.PaymentMethodAlipayDirect,
+			"icon":      "SiAlipay",
+			"min_topup": strconv.Itoa(setting.AlipayMinTopUp),
+		}
+		payMethods = replaceOrAppendPayMethod(payMethods, "alipay", alipayMethod)
+	}
+
 	// 如果启用了 Stripe 支付，添加到支付方法列表
 	if isStripeTopUpEnabled() {
 		// 检查是否已经包含 Stripe
@@ -99,6 +113,8 @@ func GetTopUpInfo(c *gin.Context) {
 
 	data := gin.H{
 		"enable_online_topup":              isEpayTopUpEnabled(),
+		"enable_alipay_topup":              enableAlipay,
+		"alipay_min_topup":                 setting.AlipayMinTopUp,
 		"enable_stripe_topup":              isStripeTopUpEnabled(),
 		"enable_creem_topup":               isCreemTopUpEnabled(),
 		"enable_waffo_topup":               enableWaffo,
@@ -146,6 +162,14 @@ func GetEpayClient() *epay.Client {
 		return nil
 	}
 	return withUrl
+}
+
+// newTopUpTradeNo builds the order number every gateway adapter stores in
+// top_ups.trade_no. It is alphanumeric and short enough for both Alipay
+// (<=64 chars) and WeChat Pay (6-32, [0-9A-Za-z_-*|]), and keeps the
+// USR<uid>NO... shape the admin search box already recognizes.
+func newTopUpTradeNo(userId int) string {
+	return fmt.Sprintf("USR%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
 }
 
 func getPayMoney(amount int64, group string) float64 {
@@ -315,8 +339,7 @@ func RequestEpay(c *gin.Context) {
 	callBackAddress := service.GetCallbackAddress()
 	returnUrl, _ := url.Parse(paymentReturnPath("/usage-logs"))
 	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
-	tradeNo := fmt.Sprintf("%s%d", common.GetRandomString(6), time.Now().Unix())
-	tradeNo = fmt.Sprintf("USR%dNO%s", id, tradeNo)
+	tradeNo := newTopUpTradeNo(id)
 	client := GetEpayClient()
 	if client == nil {
 		paymentError(c, common.NewMessage("Payment information has not been configured by administrator"))
@@ -596,4 +619,19 @@ func AdminCompleteTopUp(c *gin.Context) {
 		return
 	}
 	common.ApiSuccess(c, nil)
+}
+
+// replaceOrAppendPayMethod swaps the entry whose type is legacyType for method,
+// or appends it when the aggregator never offered that channel. Wallet button
+// order therefore follows the administrator's PayMethods list.
+func replaceOrAppendPayMethod(payMethods []map[string]string, legacyType string, method map[string]string) []map[string]string {
+	for i, existing := range payMethods {
+		if existing["type"] == legacyType {
+			updated := make([]map[string]string, len(payMethods))
+			copy(updated, payMethods)
+			updated[i] = method
+			return updated
+		}
+	}
+	return append(payMethods, method)
 }

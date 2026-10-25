@@ -11,6 +11,37 @@ func isPaymentComplianceConfirmed() bool {
 	return operation_setting.IsPaymentComplianceConfirmed()
 }
 
+// isAlipayTopUpEnabled requires a confirmed compliance acknowledgement, CNY
+// pricing (Alipay settles in CNY only, while Price is denominated in the site's
+// display currency) and the three credentials.
+func isAlipayTopUpEnabled() bool {
+	if !isPaymentComplianceConfirmed() {
+		return false
+	}
+	if !operation_setting.IsCNYDisplay() {
+		return false
+	}
+	return isAlipayWebhookConfigured()
+}
+
+func isAlipayWebhookConfigured() bool {
+	return hasAll(setting.AlipayAppId, setting.AlipayPrivateKey, setting.AlipayPublicKey)
+}
+
+func isAlipayWebhookEnabled() bool {
+	return isAlipayTopUpEnabled()
+}
+
+// hasAll reports whether every value is non-empty after trimming.
+func hasAll(values ...string) bool {
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			return false
+		}
+	}
+	return true
+}
+
 func isStripeTopUpEnabled() bool {
 	if !isPaymentComplianceConfirmed() {
 		return false

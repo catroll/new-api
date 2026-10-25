@@ -26,6 +26,7 @@ type TopUp struct {
 }
 
 const (
+	PaymentMethodAlipayDirect = "alipay_direct"
 	PaymentMethodStripe       = "stripe"
 	PaymentMethodCreem        = "creem"
 	PaymentMethodWaffo        = "waffo"
@@ -34,6 +35,7 @@ const (
 )
 
 const (
+	PaymentProviderAlipay       = "alipay"
 	PaymentProviderEpay         = "epay"
 	PaymentProviderStripe       = "stripe"
 	PaymentProviderCreem        = "creem"
@@ -43,6 +45,7 @@ const (
 )
 
 var (
+	ErrTopUpAmountMismatch   = errors.New("topup amount does not match the gateway notification")
 	ErrPaymentMethodMismatch = errors.New("payment method mismatch")
 	ErrTopUpNotFound         = errors.New("topup not found")
 	ErrTopUpStatusInvalid    = errors.New("topup status invalid")
@@ -230,6 +233,85 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 
 	common.SysLog(common.LogText("Epay top-up succeeded trade_no=%s user_id=%d quota_to_add=%d money=%.2f", topUp.TradeNo, topUp.UserId, quotaToAdd, topUp.Money))
 	RecordTopupLog(topUp.UserId, common.NewMessage("Online top-up succeeded, amount added: {{quota}}, payment amount: {{amount}}", map[string]any{"quota": logger.FormatQuota(quotaToAdd), "amount": fmt.Sprintf("%f", topUp.Money)}), callerIp, topUp.PaymentMethod, PaymentProviderEpay)
+	return false, nil
+}
+
+// RechargeDirect completes a top-up paid through a direct gateway adapter
+// (Alipay today, WeChat Pay next). expectedFen is the amount the gateway
+// reported, in CNY cents.
+//
+// The amount check runs before the "already paid" short-circuit on purpose: a
+// notification claiming a different amount must never be accepted as a
+// duplicate. As with RechargeEpay, correctness under concurrent or repeated
+// callbacks comes from the row lock and the status check inside the
+// transaction; the in-process LockOrder is only an optimisation.
+func RechargeDirect(tradeNo, provider string, expectedFen int64, callerIp string) (alreadyDone bool, err error) {
+	if tradeNo == "" {
+		return false, errors.New("payment order number not provided")
+	}
+
+	refCol := "`trade_no`"
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+		refCol = `"trade_no"`
+	}
+
+	var quotaToAdd int
+	topUp := &TopUp{}
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockForUpdate(tx).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+			return ErrTopUpNotFound
+		}
+		if topUp.PaymentProvider != provider {
+			return ErrPaymentMethodMismatch
+		}
+		// Compare in fen: the order stores yuan as float64, the gateway reports
+		// either yuan (Alipay) or fen (WeChat), and both are normalized before
+		// reaching here.
+		localFen := decimal.NewFromFloat(topUp.Money).Mul(decimal.NewFromInt(100)).Round(0).IntPart()
+		if expectedFen <= 0 || localFen != expectedFen {
+			return ErrTopUpAmountMismatch
+		}
+		if topUp.Status == common.TopUpStatusSuccess {
+			alreadyDone = true
+			return nil
+		}
+		if topUp.Status != common.TopUpStatusPending {
+			return ErrTopUpStatusInvalid
+		}
+		var quotaErr error
+		quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(
+			decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+		)
+		if quotaErr != nil || quotaToAdd <= 0 {
+			return ErrInvalidTopUpQuota
+		}
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil)
+	})
+	if err != nil {
+		if !errors.Is(err, ErrTopUpNotFound) &&
+			!errors.Is(err, ErrPaymentMethodMismatch) &&
+			!errors.Is(err, ErrTopUpStatusInvalid) &&
+			!errors.Is(err, ErrTopUpAmountMismatch) {
+			common.SysError(common.LogText("%s topup failed: %s", provider, err.Error()))
+		}
+		return false, err
+	}
+	if alreadyDone {
+		return true, nil
+	}
+	syncCreditUserQuotaCache(topUp.UserId, quotaToAdd, common.LogText("%s topup", provider))
+
+	common.SysLog(common.LogText("%s top-up succeeded trade_no=%s user_id=%d quota_to_add=%d money=%.2f",
+		provider, topUp.TradeNo, topUp.UserId, quotaToAdd, topUp.Money))
+	RecordTopupLog(topUp.UserId,
+		common.NewMessage("Online top-up succeeded, amount added: {{quota}}, payment amount: {{amount}}",
+			map[string]any{"quota": logger.FormatQuota(quotaToAdd), "amount": fmt.Sprintf("%f", topUp.Money)}),
+		callerIp, topUp.PaymentMethod, provider)
 	return false, nil
 }
 
