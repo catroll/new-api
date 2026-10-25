@@ -29,6 +29,10 @@ describe('payment amount routing', () => {
         calls.push('regular')
         return { success: true, data: '1' }
       },
+      alipayDirect: async () => {
+        calls.push('alipayDirect')
+        return { success: true, data: '7.3' }
+      },
       stripe: async () => {
         calls.push('stripe')
         return { success: true, data: '2' }
@@ -45,5 +49,38 @@ describe('payment amount routing', () => {
 
     expect(amount).toBe(18.75)
     expect(calls).toEqual(['waffo:120'])
+  })
+
+  test('uses the direct Alipay calculator for alipay_direct', async () => {
+    const calls: string[] = []
+    const amount = await requestPaymentAmount(
+      10,
+      PAYMENT_TYPES.ALIPAY_DIRECT,
+      {
+        regular: async () => {
+          calls.push('regular')
+          return { success: true, data: '73' }
+        },
+        alipayDirect: async (request) => {
+          calls.push(`alipayDirect:${request.amount}`)
+          return { success: true, data: '7.30' }
+        },
+        stripe: async () => {
+          calls.push('stripe')
+          return { success: true, data: '8' }
+        },
+        waffo: async () => {
+          calls.push('waffo')
+          return { success: true, data: '9' }
+        },
+        waffoPancake: async () => {
+          calls.push('pancake')
+          return { success: true, data: '10' }
+        },
+      }
+    )
+
+    expect(amount).toBe(7.3)
+    expect(calls).toEqual(['alipayDirect:10'])
   })
 })

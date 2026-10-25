@@ -105,6 +105,13 @@ export function getPaymentIcon(
           style={{ color: PAYMENT_ICON_COLORS[PAYMENT_TYPES.ALIPAY] }}
         />
       )
+    case PAYMENT_TYPES.ALIPAY_DIRECT:
+      return (
+        <IconAlipay
+          className={className}
+          style={{ color: PAYMENT_ICON_COLORS[PAYMENT_TYPES.ALIPAY] }}
+        />
+      )
     case PAYMENT_TYPES.WECHAT:
       return (
         <IconWeChat

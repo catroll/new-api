@@ -83,6 +83,18 @@ export async function calculateAmount(
 }
 
 /**
+ * Calculate payment amount for the direct Alipay gateway
+ */
+export async function calculateAlipayAmount(
+  request: AmountRequest
+): Promise<AmountResponse> {
+  const res = await api.post('/api/user/alipay/amount', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
  * Calculate payment amount for Stripe payment
  */
 export async function calculateStripeAmount(
@@ -119,6 +131,21 @@ export async function requestPayment(
     ...res.data,
     url: res.data.url || (res as unknown as { url?: string }).url,
   }
+}
+
+/**
+ * Request a payment through the direct Alipay gateway.
+ *
+ * The response carries the signed gateway URL; the browser is sent there and the
+ * order is credited by the asynchronous notification, never by the return trip.
+ */
+export async function requestAlipayPayment(
+  request: PaymentRequest
+): Promise<AlipayPaymentResponse> {
+  const res = await api.post('/api/user/alipay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
 }
 
 /**

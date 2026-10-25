@@ -87,6 +87,16 @@ export function submitPaymentForm(
 }
 
 /**
+ * Check if the payment method is the direct Alipay gateway.
+ *
+ * 'alipay' is the aggregator channel and still goes through the generic form
+ * submission; 'alipay_direct' talks to Alipay's own gateway.
+ */
+export function isAlipayDirectPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.ALIPAY_DIRECT
+}
+
+/**
  * Check if payment method is Stripe
  */
 export function isStripePayment(paymentType: string): boolean {

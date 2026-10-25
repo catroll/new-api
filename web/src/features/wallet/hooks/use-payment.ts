@@ -23,21 +23,30 @@ import { toast } from 'sonner'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import {
+  calculateAlipayAmount,
   calculateAmount,
   calculateStripeAmount,
   calculateWaffoAmount,
   calculateWaffoPancakeAmount,
+  requestAlipayPayment,
   requestPayment,
   requestStripePayment,
   isApiSuccess,
 } from '../api'
 import {
+  isAlipayDirectPayment,
   isStripePayment,
   isWaffoPayment,
   isWaffoPancakePayment,
   submitPaymentForm,
 } from '../lib'
-import type { AmountRequest, AmountResponse } from '../types'
+import type {
+  AlipayPaymentResponse,
+  AmountRequest,
+  AmountResponse,
+  PaymentResponse,
+  StripePaymentResponse,
+} from '../types'
 
 // ============================================================================
 // Payment Hook
@@ -47,6 +56,7 @@ type AmountCalculator = (request: AmountRequest) => Promise<AmountResponse>
 
 export interface PaymentAmountCalculators {
   regular: AmountCalculator
+  alipayDirect: AmountCalculator
   stripe: AmountCalculator
   waffo: AmountCalculator
   waffoPancake: AmountCalculator
@@ -54,6 +64,7 @@ export interface PaymentAmountCalculators {
 
 const defaultPaymentAmountCalculators: PaymentAmountCalculators = {
   regular: calculateAmount,
+  alipayDirect: calculateAlipayAmount,
   stripe: calculateStripeAmount,
   waffo: calculateWaffoAmount,
   waffoPancake: calculateWaffoPancakeAmount,
@@ -65,7 +76,9 @@ export async function requestPaymentAmount(
   calculators: PaymentAmountCalculators = defaultPaymentAmountCalculators
 ): Promise<number> {
   let calculator = calculators.regular
-  if (isStripePayment(paymentType)) {
+  if (isAlipayDirectPayment(paymentType)) {
+    calculator = calculators.alipayDirect
+  } else if (isStripePayment(paymentType)) {
     calculator = calculators.stripe
   } else if (isWaffoPayment(paymentType)) {
     calculator = calculators.waffo
@@ -114,21 +127,39 @@ export function usePayment() {
         setProcessing(true)
 
         const isStripe = isStripePayment(paymentType)
+        const isAlipayDirect = isAlipayDirectPayment(paymentType)
         const amount = Math.floor(topupAmount)
 
-        const response = isStripe
-          ? await requestStripePayment({
-              amount,
-              payment_method: 'stripe',
-            })
-          : await requestPayment({
-              amount,
-              payment_method: paymentType,
-            })
+        let response: PaymentResponse | StripePaymentResponse | AlipayPaymentResponse
+        if (isStripe) {
+          response = await requestStripePayment({
+            amount,
+            payment_method: 'stripe',
+          })
+        } else if (isAlipayDirect) {
+          response = await requestAlipayPayment({
+            amount,
+            payment_method: 'alipay_direct',
+          })
+        } else {
+          response = await requestPayment({
+            amount,
+            payment_method: paymentType,
+          })
+        }
 
         if (!isApiSuccess(response)) {
           handleServerError(response, i18next.t('Payment request failed'))
           return false
+        }
+
+        // Direct Alipay: navigate in this tab so the gateway's return URL lands
+        // on the usage log page the operator already uses for 易支付.
+        const alipayResponse = response as AlipayPaymentResponse
+        if (isAlipayDirect && alipayResponse.data?.pay_url) {
+          window.location.assign(alipayResponse.data.pay_url)
+          toast.success(i18next.t('Redirecting to payment page...'))
+          return true
         }
 
         // Handle Stripe payment
@@ -138,8 +169,8 @@ export function usePayment() {
           return true
         }
 
-        // Handle non-Stripe payment
-        if (!isStripe && response.data) {
+        // Handle aggregator payment
+        if (!isStripe && !isAlipayDirect && response.data) {
           const url = (response as unknown as { url?: string }).url
           if (url) {
             submitPaymentForm(url, response.data)

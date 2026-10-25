@@ -31,6 +31,9 @@ export const DEFAULT_PRESET_MULTIPLIERS = [1, 5, 10, 30, 50, 100, 300, 500]
  */
 export const PAYMENT_TYPES = {
   ALIPAY: 'alipay',
+  // Direct Alipay adapter (the official gateway). The lowercase 'alipay' above is
+  // the aggregator's channel name, which is passed through to 易支付 verbatim.
+  ALIPAY_DIRECT: 'alipay_direct',
   WECHAT: 'wxpay',
   STRIPE: 'stripe',
   CREEM: 'creem',
@@ -48,6 +51,7 @@ export const DEFAULT_PAYMENT_TYPE = PAYMENT_TYPES.ALIPAY
  */
 export const PAYMENT_ICON_COLORS = {
   [PAYMENT_TYPES.ALIPAY]: '#1677FF',
+  [PAYMENT_TYPES.ALIPAY_DIRECT]: '#1677FF',
   [PAYMENT_TYPES.WECHAT]: '#07C160',
   [PAYMENT_TYPES.STRIPE]: '#635BFF',
   [PAYMENT_TYPES.CREEM]: '#6366F1',
