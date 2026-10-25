@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckIcon, CopyIcon, Loader2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
@@ -74,6 +74,7 @@ export function SmsResetForm({
     resolver: zodResolver(forgotPasswordSmsFormSchema),
     defaultValues: { phone: '', code: '' },
   })
+  const phoneValue = useWatch({ control: form.control, name: 'phone' })
 
   async function sendCode() {
     if (await sendResetCode(form.getValues('phone') || '', 'reset')) {
@@ -193,9 +194,7 @@ export function SmsResetForm({
                   type='button'
                   variant='outline'
                   className='shrink-0'
-                  disabled={
-                    isSending || isActive || !form.getValues('phone') || false
-                  }
+                  disabled={isSending || isActive || !phoneValue?.trim()}
                   onClick={sendCode}
                 >
 {codeAction}

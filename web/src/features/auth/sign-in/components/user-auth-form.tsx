@@ -186,6 +186,11 @@ export function UserAuthForm({
   }, [status])
 
   async function onSubmit(data: z.infer<typeof loginFormSchema>) {
+    if (loginMode === 'sms') {
+      // Enter inside the SMS fields must not run the password handler.
+      await smsForm.handleSubmit(onSubmitSms)()
+      return
+    }
     if (requiresLegalConsent && !agreedToLegal) {
       toast.error(legalConsentErrorMessage)
       return
@@ -496,10 +501,7 @@ export function UserAuthForm({
 
         {smsLoginEnabled && loginMode === 'sms' && (
           <Form {...smsForm}>
-            <form
-              onSubmit={smsForm.handleSubmit(onSubmitSms)}
-              className='grid gap-4'
-            >
+            <div className='grid gap-4'>
               <FormField
                 control={smsForm.control}
                 name='phone'
@@ -556,14 +558,15 @@ export function UserAuthForm({
               />
 
               <Button
-                type='submit'
+                type='button'
                 className='mt-2 w-full justify-center gap-2'
                 disabled={isLoading}
+                onClick={() => void smsForm.handleSubmit(onSubmitSms)()}
               >
                 {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
                 {t('Sign in')}
               </Button>
-            </form>
+            </div>
           </Form>
         )}
 

@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
@@ -100,12 +100,15 @@ export function SignUpForm({
     defaultValues: {
       username: '',
       email: '',
+      phone: '',
+      phoneCode: '',
       password: '',
       confirmPassword: '',
     },
   })
 
   const emailValue = form.watch('email')
+  const phoneValue = useWatch({ control: form.control, name: 'phone' })
   const emailVerificationRequired = !!status?.email_verification
   const smsRequirePhone = Boolean(
     status?.sms_require_phone ?? status?.data?.sms_require_phone
@@ -416,17 +419,23 @@ export function SignUpForm({
 
             <div className='flex items-end gap-2'>
               <div className='flex-1'>
-                <FormItem>
-                  <FormLabel>{t('Verification code')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t('Enter the verification code')}
-                      autoComplete='one-time-code'
-                      {...form.register('phoneCode')}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                <FormField
+                  control={form.control}
+                  name='phoneCode'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Verification code')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={t('Enter the verification code')}
+                          autoComplete='one-time-code'
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               <Button
                 variant='outline'
@@ -435,7 +444,7 @@ export function SignUpForm({
                   isLoading ||
                   isSendingSms ||
                   smsActive ||
-                  !form.getValues('phone') ||
+                  !phoneValue?.trim() ||
                   !turnstileReady
                 }
                 onClick={handleSendSmsVerificationCode}
