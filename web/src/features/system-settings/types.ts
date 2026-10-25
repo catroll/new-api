@@ -376,6 +376,27 @@ export type OperationsSettings = {
   SMTPStartTLSEnabled: boolean
   SMTPInsecureSkipVerify: boolean
   SMTPForceAuthLogin: boolean
+  'sms.enabled': boolean
+  'sms.login_enabled': boolean
+  'sms.require_phone': boolean
+  'sms.provider': 'sendcloud' | 'console'
+  'sms.api': 'sendCode' | 'send'
+  'sms.api_base': string
+  'sms.sms_user': string
+  'sms.sms_key': string
+  'sms.sms_key_configured': boolean
+  'sms.sign_id': number
+  'sms.sign_name': string
+  'sms.template_id': number
+  'sms.template_param_key': string
+  'sms.msg_type': 0 | 2
+  'sms.allowed_country_codes': string
+  'sms.code_ttl_seconds': number
+  'sms.resend_seconds': number
+  'sms.max_attempts': number
+  'sms.phone_daily_limit': number
+  'sms.ip_hourly_limit': number
+  'sms.daily_quota': number
   WorkerUrl: string
   WorkerValidKey: string
   WorkerAllowHttpImageRequestEnabled: boolean

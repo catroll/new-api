@@ -33,6 +33,8 @@ export const registerFormSchema = z
   .object({
     username: z.string().min(1, 'Please enter your username'),
     email: z.string().optional(),
+    phone: z.string().optional(),
+    phoneCode: z.string().optional(),
     password: accountPasswordSchema,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
   })
@@ -47,6 +49,16 @@ export const forgotPasswordFormSchema = z.object({
   }),
 })
 
+export const smsLoginFormSchema = z.object({
+  phone: z.string().min(1, 'Please enter your phone number'),
+  code: z.string().min(1, 'Please enter the verification code'),
+})
+
+export const forgotPasswordSmsFormSchema = z.object({
+  phone: z.string().min(1, 'Please enter your phone number'),
+  code: z.string().min(1, 'Please enter the verification code'),
+})
+
 export const otpFormSchema = z.object({
   otp: z.string().min(1, 'Please enter a code.'),
 })
@@ -58,6 +70,7 @@ export const otpFormSchema = z.object({
 export const PASSWORD_MIN_LENGTH = 8
 export const PASSWORD_MAX_LENGTH = 20
 export const OTP_LENGTH = 6
+export const SMS_CODE_COUNTDOWN = 60
 export const BACKUP_CODE_LENGTH = 9 // XXXX-XXXX format
 export const BACKUP_CODE_REGEX = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/i
 export const OTP_REGEX = /^\d{6}$/

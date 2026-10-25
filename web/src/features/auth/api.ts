@@ -37,6 +37,10 @@ import type {
   LoginPayload,
   LoginResponse,
   Login2FAResponse,
+  LoginSmsPayload,
+  SmsCodePayload,
+  PhoneBindPayload,
+  SmsPasswordResetPayload,
   TwoFAPayload,
   RegisterPayload,
   ApiResponse,
@@ -91,6 +95,22 @@ export async function login2fa(payload: TwoFAPayload) {
   const res = await api.post<Login2FAResponse>('/api/user/login/2fa', payload, {
     skipAuthRefresh: true,
   })
+  return res.data
+}
+
+// Sign in with a phone number and an SMS verification code. The response has
+// the same shape as the password login, including a possible 2FA challenge.
+export async function loginBySms(
+  payload: LoginSmsPayload
+): Promise<LoginResponse> {
+  const res = await api.post<LoginResponse>(
+    '/api/user/login/sms',
+    { phone: payload.phone, code: payload.code },
+    {
+      params: { turnstile: payload.turnstile ?? '' },
+      skipAuthRefresh: true,
+    }
+  )
   return res.data
 }
 
@@ -156,6 +176,27 @@ export async function sendPasswordResetEmail(
   const res = await api.get('/api/reset_password', {
     params: { email, turnstile },
   })
+  return res.data
+}
+
+// Send a password reset code by SMS. The response is uniform for unknown
+// numbers on purpose.
+export async function sendPasswordResetSms(
+  phone: string,
+  turnstile?: string
+): Promise<ApiResponse> {
+  const res = await api.get('/api/reset_password/sms', {
+    params: { phone, turnstile },
+  })
+  return res.data
+}
+
+// Reset the password with the SMS code. Returns the generated password, exactly
+// like the email reset does.
+export async function resetPasswordBySms(
+  payload: SmsPasswordResetPayload
+): Promise<ApiResponse> {
+  const res = await api.post('/api/user/reset/sms', payload)
   return res.data
 }
 
@@ -261,6 +302,40 @@ export async function sendEmailVerification(
 ): Promise<ApiResponse> {
   const res = await api.get('/api/verification', {
     params: { email, turnstile },
+  })
+  return res.data
+}
+
+// Send an SMS verification code for login, registration or password reset.
+export async function sendSmsCode(
+  payload: SmsCodePayload
+): Promise<ApiResponse> {
+  const res = await api.get('/api/verification/sms', {
+    params: {
+      phone: payload.phone,
+      purpose: payload.purpose ?? 'login',
+      turnstile: payload.turnstile,
+    },
+  })
+  return res.data
+}
+
+// Send a code to the number an authenticated account wants to bind.
+export async function sendBindPhoneCode(phone: string): Promise<ApiResponse> {
+  const res = await api.post('/api/user/phone/bind/code', { phone })
+  return res.data
+}
+
+// Bind the phone with the code and the account.binding.bind proof.
+export async function bindPhone(
+  payload: PhoneBindPayload,
+  proofToken: string,
+  signal?: AbortSignal
+): Promise<ApiResponse> {
+  const res = await api.post('/api/user/phone/bind', payload, {
+    headers: { 'X-Security-Proof': proofToken },
+    singleUseAuthorization: true,
+    signal,
   })
   return res.data
 }

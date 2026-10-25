@@ -41,8 +41,34 @@ export interface RegisterPayload {
   password: string
   email?: string
   verification_code?: string
+  phone?: string
+  phone_code?: string
   aff_code?: string
   turnstile?: string
+}
+
+export interface LoginSmsPayload {
+  phone: string
+  code: string
+  turnstile?: string
+}
+
+export type SmsCodePurpose = 'login' | 'register' | 'reset'
+
+export interface SmsCodePayload {
+  phone: string
+  purpose?: SmsCodePurpose
+  turnstile?: string
+}
+
+export interface PhoneBindPayload {
+  phone: string
+  code: string
+}
+
+export interface SmsPasswordResetPayload {
+  phone: string
+  code: string
 }
 
 export interface PasswordResetPayload {
@@ -118,6 +144,10 @@ export interface SystemStatus {
     turnstile_check?: boolean
     turnstile_site_key?: string
     email_verification?: boolean
+    sms_enabled?: boolean
+    sms_login_enabled?: boolean
+    sms_require_phone?: boolean
+    sms_default_country_code?: string
     self_use_mode_enabled?: boolean
     display_in_currency?: boolean
     display_token_stat_enabled?: boolean
@@ -165,6 +195,10 @@ export interface SystemStatus {
   turnstile_check?: boolean
   turnstile_site_key?: string
   email_verification?: boolean
+  sms_enabled?: boolean
+  sms_login_enabled?: boolean
+  sms_require_phone?: boolean
+  sms_default_country_code?: string
   self_use_mode_enabled?: boolean
   display_in_currency?: boolean
   display_token_stat_enabled?: boolean

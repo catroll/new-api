@@ -17,13 +17,28 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { Button } from '@/components/ui/button'
+import { useStatus } from '@/hooks/use-status'
 
 import { AuthLayout } from '../auth-layout'
 import { ForgotPasswordForm } from './components/forgot-password-form'
+import { SmsResetForm } from './components/sms-reset-form'
 
 export function ForgotPassword() {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const smsEnabled = Boolean(
+    status?.sms_enabled ?? status?.data?.sms_enabled
+  )
+  const countryCode = String(
+    status?.sms_default_country_code ??
+      status?.data?.sms_default_country_code ??
+      '+86'
+  )
+  const [mode, setMode] = useState<'email' | 'phone'>('email')
   return (
     <AuthLayout>
       <div className='w-full space-y-8'>
@@ -48,7 +63,30 @@ export function ForgotPassword() {
           </p>
         </div>
 
-        <ForgotPasswordForm className='space-y-0' />
+        {smsEnabled && (
+          <div className='grid grid-cols-2 gap-2'>
+            <Button
+              type='button'
+              variant={mode === 'email' ? 'default' : 'outline'}
+              onClick={() => setMode('email')}
+            >
+              {t('Email')}
+            </Button>
+            <Button
+              type='button'
+              variant={mode === 'phone' ? 'default' : 'outline'}
+              onClick={() => setMode('phone')}
+            >
+              {t('Phone number')}
+            </Button>
+          </div>
+        )}
+
+        {mode === 'email' || !smsEnabled ? (
+          <ForgotPasswordForm className='space-y-0' />
+        ) : (
+          <SmsResetForm countryCode={countryCode} className='space-y-0' />
+        )}
       </div>
     </AuthLayout>
   )

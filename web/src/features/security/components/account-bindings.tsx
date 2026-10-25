@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Mail, Shield, Send, Link2, Unlink } from 'lucide-react'
+import { Mail, Shield, Send, Link2, Smartphone, Unlink } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -59,6 +59,7 @@ import {
 
 import { useAccountSecurity } from '../hooks/use-account-security'
 import { EmailBindDialog } from './dialogs/email-bind-dialog'
+import { PhoneBindDialog } from '@/features/auth/components/phone-bind-dialog'
 import { WeChatBindDialog } from './dialogs/wechat-bind-dialog'
 
 // ============================================================================
@@ -70,7 +71,7 @@ interface AccountBindingsProps {
   onUpdate: () => void
 }
 
-type DialogKey = 'email' | 'wechat'
+type DialogKey = 'email' | 'phone' | 'wechat'
 
 type PreparedOAuthBinding = AccountSecurityResult & {
   provider: string
@@ -230,6 +231,15 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
   if (!profile || !status || loading) return null
 
   const bindings: BindingItem[] = [
+    {
+      id: 'phone',
+      label: t('Phone number'),
+      icon: Smartphone,
+      value: profile.phone,
+      isBound: Boolean(profile.has_phone ?? profile.phone),
+      isEnabled: Boolean(status?.sms_enabled ?? status?.data?.sms_enabled),
+      onBind: () => dialogs.open('phone'),
+    },
     {
       id: 'email',
       label: t('Email'),
@@ -468,6 +478,14 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
       />
 
       {/* Email Bind Dialog */}
+      <PhoneBindDialog
+        open={dialogs.isOpen('phone')}
+        onOpenChange={(open) =>
+          open ? dialogs.open('phone') : dialogs.close('phone')
+        }
+        onSuccess={onUpdate}
+      />
+
       <EmailBindDialog
         open={dialogs.isOpen('email')}
         onOpenChange={(open) =>

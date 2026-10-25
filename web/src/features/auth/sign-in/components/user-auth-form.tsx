@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
 import { Loader2, LogIn, KeyRound } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -39,11 +39,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { login, wechatLoginByCode } from '@/features/auth/api'
+import { login, loginBySms, wechatLoginByCode } from '@/features/auth/api'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
-import { loginFormSchema } from '@/features/auth/constants'
+import { loginFormSchema, smsLoginFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
+import { useSmsVerification } from '@/features/auth/hooks/use-sms-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { beginPasskeyLogin, finishPasskeyLogin } from '@/features/auth/passkey'
 import {
@@ -145,6 +146,31 @@ export function UserAuthForm({
     },
   })
 
+  const smsLoginEnabled = Boolean(
+    status?.sms_login_enabled ?? status?.data?.sms_login_enabled
+  )
+  const smsCountryCode = String(
+    status?.sms_default_country_code ??
+      status?.data?.sms_default_country_code ??
+      '+86'
+  )
+  const [loginMode, setLoginMode] = useState<'password' | 'sms'>('password')
+  useEffect(() => {
+    if (!passwordLoginEnabled && smsLoginEnabled) {
+      setLoginMode('sms')
+    }
+  }, [passwordLoginEnabled, smsLoginEnabled])
+  const smsForm = useForm<z.infer<typeof smsLoginFormSchema>>({
+    resolver: zodResolver(smsLoginFormSchema),
+    defaultValues: { phone: '', code: '' },
+  })
+  const {
+    isSending: isSendingSms,
+    secondsLeft: smsSecondsLeft,
+    isActive: smsCountdownActive,
+    sendCode: sendSmsLoginCode,
+  } = useSmsVerification({ turnstileToken, validateTurnstile })
+
   const wechatQrCodeUrl = useMemo(() => {
     return (
       status?.wechat_qrcode ||
@@ -184,6 +210,41 @@ export function UserAuthForm({
 
       if (res.success) {
         form.setValue('password', '')
+        if (await handleLoginResult(res.data, redirectTo)) {
+          toast.success(t('Welcome back!'))
+        }
+      } else {
+        handleServerError(createServerError(res, loginFailedMessage))
+      }
+    } catch (error: unknown) {
+      handleServerError(AuthOperationError.from(error, loginFailedMessage))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function onSubmitSms(data: z.infer<typeof smsLoginFormSchema>) {
+    if (requiresLegalConsent && !agreedToLegal) {
+      toast.error(legalConsentErrorMessage)
+      return
+    }
+    if (!validateTurnstile()) return
+
+    const submittedTurnstileToken = turnstileToken
+    if (isTurnstileEnabled) {
+      setTurnstileToken('')
+      setTurnstileWidgetKey((current) => current + 1)
+    }
+
+    setIsLoading(true)
+    try {
+      const res = await loginBySms({
+        phone: data.phone,
+        code: data.code,
+        turnstile: submittedTurnstileToken,
+      })
+      if (res.success) {
+        smsForm.setValue('code', '')
         if (await handleLoginResult(res.data, redirectTo)) {
           toast.success(t('Welcome back!'))
         }
@@ -342,6 +403,13 @@ export function UserAuthForm({
     </>
   )
 
+  let smsCodeAction: ReactNode = t('Send code')
+  if (isSendingSms) {
+    smsCodeAction = <Loader2 className='h-4 w-4 animate-spin' />
+  } else if (smsCountdownActive) {
+    smsCodeAction = t('Resend ({{seconds}}s)', { seconds: smsSecondsLeft })
+  }
+
   return (
     <Form {...form}>
       <form
@@ -351,7 +419,26 @@ export function UserAuthForm({
       >
         {hasAlternativeLogin && alternativeLoginMethods}
 
-        {passwordLoginEnabled && (
+        {smsLoginEnabled && passwordLoginEnabled && (
+          <div className='grid grid-cols-2 gap-2'>
+            <Button
+              type='button'
+              variant={loginMode === 'password' ? 'default' : 'outline'}
+              onClick={() => setLoginMode('password')}
+            >
+              {t('Password sign in')}
+            </Button>
+            <Button
+              type='button'
+              variant={loginMode === 'sms' ? 'default' : 'outline'}
+              onClick={() => setLoginMode('sms')}
+            >
+              {t('Code sign in')}
+            </Button>
+          </div>
+        )}
+
+        {passwordLoginEnabled && loginMode === 'password' && (
           <>
             {/* Username Field */}
             <FormField
@@ -404,19 +491,91 @@ export function UserAuthForm({
               {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
               {t('Sign in')}
             </Button>
-
-            {/* Turnstile */}
-            {isTurnstileEnabled && (
-              <div className='mt-2'>
-                <Turnstile
-                  key={turnstileWidgetKey}
-                  siteKey={turnstileSiteKey}
-                  onVerify={setTurnstileToken}
-                  onExpire={() => setTurnstileToken('')}
-                />
-              </div>
-            )}
           </>
+        )}
+
+        {smsLoginEnabled && loginMode === 'sms' && (
+          <Form {...smsForm}>
+            <form
+              onSubmit={smsForm.handleSubmit(onSubmitSms)}
+              className='grid gap-4'
+            >
+              <FormField
+                control={smsForm.control}
+                name='phone'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Phone number')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={`${smsCountryCode} 13800138000`}
+                        inputMode='tel'
+                        autoComplete='tel'
+                        {...field}
+                      />
+                    </FormControl>
+                    <p className='text-muted-foreground text-xs'>
+                      {t(
+                        'Enter the number bound to your account. Mainland numbers can be typed without the country code.'
+                      )}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={smsForm.control}
+                name='code'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Verification code')}</FormLabel>
+                    <div className='flex gap-2'>
+                      <FormControl>
+                        <Input
+                          placeholder={t('Enter the verification code')}
+                          autoComplete='one-time-code'
+                          {...field}
+                        />
+                      </FormControl>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        className='shrink-0'
+                        disabled={isSendingSms || smsCountdownActive}
+                        onClick={() =>
+                          sendSmsLoginCode(smsForm.getValues('phone'))
+                        }
+                      >
+{smsCodeAction}
+                      </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type='submit'
+                className='mt-2 w-full justify-center gap-2'
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
+                {t('Sign in')}
+              </Button>
+            </form>
+          </Form>
+        )}
+
+        {isTurnstileEnabled && (passwordLoginEnabled || smsLoginEnabled) && (
+          <div className='mt-2'>
+            <Turnstile
+              key={turnstileWidgetKey}
+              siteKey={turnstileSiteKey}
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken('')}
+            />
+          </div>
         )}
 
         <LegalConsent

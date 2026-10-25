@@ -47,6 +47,10 @@ export interface UserProfile {
   role: number
   /** Email address */
   email?: string
+  /** Bound phone number (masked) */
+  phone?: string
+  /** Whether a phone number is bound */
+  has_phone?: boolean
   /** User group */
   group: string
   /** Current quota balance */

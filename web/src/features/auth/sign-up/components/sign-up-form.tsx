@@ -44,6 +44,7 @@ import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { registerFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
+import { useSmsVerification } from '@/features/auth/hooks/use-sms-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import {
   getAffiliateCode,
@@ -87,6 +88,12 @@ export function SignUpForm({
     turnstileToken,
     validateTurnstile,
   })
+  const {
+    isSending: isSendingSms,
+    secondsLeft: smsSecondsLeft,
+    isActive: smsActive,
+    sendCode: sendSmsCodeAction,
+  } = useSmsVerification({ turnstileToken, validateTurnstile })
 
   const form = useForm<z.infer<typeof registerFormSchema>>({
     resolver: zodResolver(registerFormSchema),
@@ -100,6 +107,14 @@ export function SignUpForm({
 
   const emailValue = form.watch('email')
   const emailVerificationRequired = !!status?.email_verification
+  const smsRequirePhone = Boolean(
+    status?.sms_require_phone ?? status?.data?.sms_require_phone
+  )
+  const smsCountryCode = String(
+    status?.sms_default_country_code ??
+      status?.data?.sms_default_country_code ??
+      '+86'
+  )
   const hasUserAgreement = Boolean(status?.user_agreement_enabled)
   const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
   const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
@@ -145,6 +160,18 @@ export function SignUpForm({
       return
     }
 
+    // Validate the phone policy if required
+    if (smsRequirePhone) {
+      if (!data.phone?.trim()) {
+        toast.error(t('Please enter your phone number'))
+        return
+      }
+      if (!data.phoneCode?.trim()) {
+        toast.error(t('Please enter the verification code'))
+        return
+      }
+    }
+
     // Validate email verification if required
     if (emailVerificationRequired) {
       if (!data.email) {
@@ -166,6 +193,8 @@ export function SignUpForm({
         password: data.password,
         email: data.email || undefined,
         verification_code: verificationCode || undefined,
+        phone: data.phone?.trim() || undefined,
+        phone_code: data.phoneCode?.trim() || undefined,
         aff_code: getAffiliateCode(),
         turnstile: turnstileToken,
       })
@@ -182,6 +211,13 @@ export function SignUpForm({
       )
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function handleSendSmsVerificationCode() {
+    if (await sendSmsCodeAction(form.getValues('phone') || '', 'register')) {
+      setTurnstileToken('')
+      setTurnstileWidgetKey((current) => current + 1)
     }
   }
 
@@ -242,6 +278,13 @@ export function SignUpForm({
     })
   } else if (isSendingCode) {
     verificationCodeAction = <Loader2 className='h-4 w-4 animate-spin' />
+  }
+
+  let smsCodeAction: ReactNode = t('Send code')
+  if (isSendingSms) {
+    smsCodeAction = <Loader2 className='h-4 w-4 animate-spin' />
+  } else if (smsActive) {
+    smsCodeAction = t('Resend ({{seconds}}s)', { seconds: smsSecondsLeft })
   }
 
   return (
@@ -345,6 +388,59 @@ export function SignUpForm({
                 onClick={handleSendVerificationCode}
               >
                 {verificationCodeAction}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {smsRequirePhone && (
+          <>
+            <FormField
+              control={form.control}
+              name='phone'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Phone number')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={`${smsCountryCode} 13800138000`}
+                      inputMode='tel'
+                      autoComplete='tel'
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className='flex items-end gap-2'>
+              <div className='flex-1'>
+                <FormItem>
+                  <FormLabel>{t('Verification code')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t('Enter the verification code')}
+                      autoComplete='one-time-code'
+                      {...form.register('phoneCode')}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </div>
+              <Button
+                variant='outline'
+                type='button'
+                disabled={
+                  isLoading ||
+                  isSendingSms ||
+                  smsActive ||
+                  !form.getValues('phone') ||
+                  !turnstileReady
+                }
+                onClick={handleSendSmsVerificationCode}
+              >
+{smsCodeAction}
               </Button>
             </div>
           </>

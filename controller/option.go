@@ -409,6 +409,12 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	}
+	// The SMS key is write-only: an empty value means "keep the stored key",
+	// which is how the console form submits it.
+	if option.Key == "sms.sms_key" && strings.TrimSpace(option.Value.(string)) == "" {
+		common.ApiSuccess(c, nil)
+		return
+	}
 	if strings.HasPrefix(option.Key, "sms.") {
 		if err := validateSMSOption(option.Key, option.Value.(string)); err != nil {
 			common.ApiError(c, err)
@@ -456,6 +462,9 @@ func UpdateOption(c *gin.Context) {
 // checks both the provider configuration and the policy combinations that are
 // not expressible in Validate alone.
 func validateSMSOption(key, value string) error {
+	if key == "sms.sms_key_configured" {
+		return common.NewMessage("This field is read-only")
+	}
 	settings := system_setting.SMSSettingsSnapshot()
 	if err := applySMSOptionValue(&settings, strings.TrimPrefix(key, "sms."), value); err != nil {
 		return err

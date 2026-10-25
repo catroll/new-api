@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { SystemBehaviorSection } from '../general/system-behavior-section'
 import { EmailSettingsSection } from '../integrations/email-settings-section'
 import { MonitoringSettingsSection } from '../integrations/monitoring-settings-section'
+import { SmsSettingsSection } from '../integrations/sms-settings-section'
 import { WorkerSettingsSection } from '../integrations/worker-settings-section'
 import { LogSettingsSection } from '../maintenance/log-settings-section'
 import { PerformanceSection } from '../maintenance/performance-section'
@@ -79,6 +80,37 @@ const OPERATIONS_SECTIONS = [
           SMTPStartTLSEnabled: settings.SMTPStartTLSEnabled,
           SMTPInsecureSkipVerify: settings.SMTPInsecureSkipVerify,
           SMTPForceAuthLogin: settings.SMTPForceAuthLogin,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'sms',
+    titleKey: 'SMS',
+    build: (settings: OperationsSettings) => (
+      <SmsSettingsSection
+        defaultValues={{
+          enabled: settings['sms.enabled'],
+          login_enabled: settings['sms.login_enabled'],
+          require_phone: settings['sms.require_phone'],
+          provider: settings['sms.provider'],
+          api: settings['sms.api'],
+          api_base: settings['sms.api_base'],
+          sms_user: settings['sms.sms_user'],
+          sms_key: settings['sms.sms_key'],
+          sms_key_configured: settings['sms.sms_key_configured'],
+          sign_id: settings['sms.sign_id'],
+          sign_name: settings['sms.sign_name'],
+          template_id: settings['sms.template_id'],
+          template_param_key: settings['sms.template_param_key'],
+          msg_type: settings['sms.msg_type'],
+          allowed_country_codes: settings['sms.allowed_country_codes'],
+          code_ttl_seconds: settings['sms.code_ttl_seconds'],
+          resend_seconds: settings['sms.resend_seconds'],
+          max_attempts: settings['sms.max_attempts'],
+          phone_daily_limit: settings['sms.phone_daily_limit'],
+          ip_hourly_limit: settings['sms.ip_hourly_limit'],
+          daily_quota: settings['sms.daily_quota'],
         }}
       />
     ),
