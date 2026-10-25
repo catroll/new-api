@@ -138,3 +138,21 @@ func MaskEmail(email string) string {
 func MaskSensitiveInfo(str string, upstreamURLs ...string) string {
 	return kitutil.MaskSensitiveInfo(str, upstreamURLs...)
 }
+
+// MaskPhone masks a phone number for logs and self-service responses.
+// It accepts the canonical form ("+8613800138000") as well as bare digits and
+// keeps the first three and last four digits: 138****8000.
+func MaskPhone(phone string) string {
+	digits := strings.TrimPrefix(strings.TrimSpace(phone), "+")
+	digits = strings.TrimPrefix(digits, "86")
+	if len(digits) == 11 {
+		return digits[:3] + "****" + digits[7:]
+	}
+	if digits == "" {
+		return "***masked***"
+	}
+	if len(digits) <= 4 {
+		return "***"
+	}
+	return digits[:3] + "***"
+}
