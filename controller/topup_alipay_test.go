@@ -436,13 +436,28 @@ func TestRequestAlipayPayBuildsGatewayURL(t *testing.T) {
 func TestNormalizeAlipayKeyAcceptsEveryShape(t *testing.T) {
 	keys := newAlipayTestKeys(t)
 	bare := normalizeAlipayKey(keys.privPEM)
+	require.NotEmpty(t, bare)
 	assert.NotContains(t, bare, "BEGIN")
 	assert.NotContains(t, bare, "\n")
 
-	// PEM, single line, and PEM with literal \n escapes all reduce to the same
-	// base64 body.
+	// PEM, PEM with literal \n escapes, and a bare body all reduce to the same
+	// base64 string.
 	assert.Equal(t, bare, normalizeAlipayKey(strings.ReplaceAll(keys.privPEM, "\n", `\n`)))
 	assert.Equal(t, bare, normalizeAlipayKey("  "+bare+"  "))
+
+	// The console's key field is a single-line input: the browser removes the
+	// newlines when a PEM is pasted into it, so the value that reaches the server
+	// looks like "-----BEGIN ...----- MIIE... -----END ...-----" on one line.
+	// Stripping "lines that start with -----" used to erase the whole key and the
+	// gateway then reported "missing alipay init parameter".
+	collapsed := strings.Join(strings.Fields(keys.privPEM), " ")
+	require.Contains(t, collapsed, "-----BEGIN")
+	assert.Equal(t, bare, normalizeAlipayKey(collapsed))
+
+	// And the collapsed form has to produce a working client, not just a string.
+	client, err := alipay.NewClient("2021000000000001", normalizeAlipayKey(collapsed), true)
+	require.NoError(t, err)
+	require.NotNil(t, client)
 }
 
 func TestYuanToFenAlipay(t *testing.T) {

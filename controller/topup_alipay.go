@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -66,22 +67,35 @@ func getAlipayClient() (*alipay.Client, error) {
 	return client, nil
 }
 
+// pemArmor matches a PEM header or footer wherever it appears. Base64 never
+// contains a hyphen, so a run of five hyphens is always armour and never key
+// material.
+var pemArmor = regexp.MustCompile(`-----BEGIN[^-]*-----|-----END[^-]*-----`)
+
 // normalizeAlipayKey turns any accepted shape of a key into bare base64.
-// gopay's FormatAlipayPrivateKey / FormatAlipayPublicKey always re-wrap their
-// input as PEM, so a pasted PEM block breaks: PKCS#1 fails outright and PKCS#8
-// only survives because the PEM decoder happens to find the inner block.
+//
+// Two reasons to be this forgiving:
+//
+//   - gopay's FormatAlipayPrivateKey / FormatAlipayPublicKey re-wrap their input
+//     as PEM themselves, so a pasted PEM block breaks: PKCS#1 fails outright and
+//     PKCS#8 only survives because the PEM decoder happens to find the inner
+//     block.
+//   - the console's key field is a single-line input, and a browser strips the
+//     newlines out of anything pasted into one. A pasted PEM therefore arrives as
+//     "-----BEGIN PRIVATE KEY----- MIIE... -----END PRIVATE KEY-----" on one line.
+//     Stripping whole lines that start with "-----" then deletes the entire key,
+//     which is how a configured gateway ended up reporting "missing alipay init
+//     parameter".
 func normalizeAlipayKey(raw string) string {
-	raw = strings.TrimSpace(strings.ReplaceAll(strings.TrimSpace(raw), `\n`, "\n"))
-	if !strings.Contains(raw, "-----BEGIN") {
-		return strings.Join(strings.Fields(raw), "")
-	}
+	raw = strings.ReplaceAll(raw, `\n`, "\n")
+	raw = pemArmor.ReplaceAllString(raw, "\n")
+
 	var b strings.Builder
-	for _, line := range strings.Split(raw, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "-----") {
-			continue
+	for _, r := range raw {
+		switch {
+		case r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '+', r == '/', r == '=':
+			b.WriteRune(r)
 		}
-		b.WriteString(line)
 	}
 	return b.String()
 }

@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getPaymentErrorTranslation } from '@/features/wallet/lib/payment'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -1406,10 +1407,12 @@ export function PaymentSettingsSection({
                     <FormItem>
                       <FormLabel>{t('Application private key')}</FormLabel>
                       <FormControl>
-                        <Input
-                          type='password'
+                        <Textarea
+                          rows={6}
+                          spellCheck={false}
                           placeholder={t('Paste the whole key, PEM or base64')}
-                          autoComplete='new-password'
+                          autoComplete='off'
+                          className='font-mono text-xs break-all'
                           {...field}
                           onChange={(event) =>
                             field.onChange(event.target.value)
