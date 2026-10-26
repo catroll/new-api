@@ -1418,7 +1418,7 @@ export function PaymentSettingsSection({
                       </FormControl>
                       <FormDescription>
                         {t(
-                          'Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. Leave blank to keep the stored key.'
+                          'Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. A stored key is never echoed back: leave this blank to keep it.'
                         )}
                       </FormDescription>
                       <FormMessage />

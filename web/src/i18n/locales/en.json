@@ -12,7 +12,7 @@
     "Smallest amount this gateway accepts": "Smallest amount this gateway accepts",
     "Application private key": "Application private key",
     "Paste the whole key, PEM or base64": "Paste the whole key, PEM or base64",
-    "Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. Leave blank to keep the stored key.": "Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. Leave blank to keep the stored key.",
+    "Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. A stored key is never echoed back: leave this blank to keep it.": "Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. A stored key is never echoed back: leave this blank to keep it.",
     "Alipay public key": "Alipay public key",
     "Alipay's platform public key, used to verify notifications. Not the application public key: using that one makes every notification fail.": "Alipay's platform public key, used to verify notifications. Not the application public key: using that one makes every notification fail.",
     "Route requests to openapi-sandbox.dl.alipaydev.com. Requires the sandbox application credentials.": "Route requests to openapi-sandbox.dl.alipaydev.com. Requires the sandbox application credentials.",

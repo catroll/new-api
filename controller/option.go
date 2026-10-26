@@ -80,6 +80,14 @@ func buildCompletionRatioMetaValue(optionValues map[string]string) string {
 	return string(jsonBytes)
 }
 
+// nonSensitiveOptionKeys lists options whose name looks sensitive but whose value
+// is safe to return. Keep this list tiny and justify every entry.
+var nonSensitiveOptionKeys = map[string]struct{}{
+	// Alipay's platform public key: it verifies notifications and is shared with
+	// the merchant by design.
+	"AlipayPublicKey": {},
+}
+
 func GetOptions(c *gin.Context) {
 	var options []*model.Option
 	optionValues := make(map[string]string)
@@ -89,6 +97,13 @@ func GetOptions(c *gin.Context) {
 			continue
 		}
 		value := common.Interface2String(v)
+		// A public key is published to the counterparty by definition, and the
+		// console has to display it so an operator can compare it with Alipay's.
+		// Everything else that ends in Key/Secret/Token stays write-only.
+		if _, public := nonSensitiveOptionKeys[k]; public {
+			options = append(options, &model.Option{Key: k, Value: common.Interface2String(v)})
+			continue
+		}
 		isSensitiveKey := strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||

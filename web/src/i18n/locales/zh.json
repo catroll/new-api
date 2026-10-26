@@ -12,7 +12,7 @@
     "Smallest amount this gateway accepts": "该渠道接受的最小金额",
     "Application private key": "应用私钥",
     "Paste the whole key, PEM or base64": "整串粘贴，PEM 或 base64 都行",
-    "Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. Leave blank to keep the stored key.": "Java 格式（PKCS#8）与非 Java 格式（PKCS#1）都接受，带不带 PEM 头都行。留空表示不修改已保存的私钥。",
+    "Java format (PKCS#8) and non-Java format (PKCS#1) are both accepted, with or without PEM headers. A stored key is never echoed back: leave this blank to keep it.": "Java 格式（PKCS#8）与非 Java 格式（PKCS#1）都接受，带不带 PEM 头都行。出于安全考虑，已保存的私钥不会回显：留空表示保留现有私钥。",
     "Alipay public key": "支付宝公钥",
     "Alipay's platform public key, used to verify notifications. Not the application public key: using that one makes every notification fail.": "支付宝平台公钥，用来验证异步通知。不是应用公钥——填成应用公钥会让每条回调都验签失败。",
     "Route requests to openapi-sandbox.dl.alipaydev.com. Requires the sandbox application credentials.": "请求发往 openapi-sandbox.dl.alipaydev.com。需要沙箱应用的凭证。",
