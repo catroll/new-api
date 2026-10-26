@@ -728,7 +728,7 @@ export function SmsSettingsSection({ defaultValues }: SmsSettingsSectionProps) {
                   <FormControl>
                     <Input
                       type='number'
-                      min={0}
+                      min={1}
                       step={1}
                       {...safeNumberFieldProps(field)}
                       disabled={isSaving}

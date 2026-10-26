@@ -99,13 +99,13 @@ func (s SMSSettings) WithDefaults() SMSSettings {
 		s.MaxAttempts = 5
 	}
 	if s.PhoneDailyLimit <= 0 {
-		s.PhoneDailyLimit = 5
+		s.PhoneDailyLimit = 10
 	}
 	if s.IPHourlyLimit <= 0 {
 		s.IPHourlyLimit = 10
 	}
-	if s.DailyQuota < 0 {
-		s.DailyQuota = 0
+	if s.DailyQuota <= 0 {
+		s.DailyQuota = 3000
 	}
 	if strings.TrimSpace(s.TemplateParamKey) == "" {
 		s.TemplateParamKey = "code"

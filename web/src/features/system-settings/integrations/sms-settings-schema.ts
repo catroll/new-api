@@ -44,7 +44,7 @@ export const smsConfigurationSchema = z.object({
   max_attempts: z.number().int().positive(),
   phone_daily_limit: z.number().int().positive(),
   ip_hourly_limit: z.number().int().positive(),
-  daily_quota: z.number().int().min(0),
+  daily_quota: z.number().int().positive(),
 })
 
 export type SmsConfiguration = z.infer<typeof smsConfigurationSchema>
