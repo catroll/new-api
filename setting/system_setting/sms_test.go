@@ -1,6 +1,10 @@
 package system_setting
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/QuantumNous/new-api/setting/config"
+)
 
 // TestSMSSettingsDefaults pins the documented built-in defaults: an admin who
 // never opens the SMS settings page still gets a bounded, working policy.
@@ -37,5 +41,29 @@ func TestSMSSettingsDefaults(t *testing.T) {
 	}
 	if settings.AllowedCountryCodes != "+86" {
 		t.Errorf("allowed country codes = %q, want +86", settings.AllowedCountryCodes)
+	}
+}
+
+// TestSMSOptionDefaultsAreExported guards the registration path: the admin
+// console reads defaults from the options API, which InitOptionMap builds from
+// ExportAllConfigs. If the registered struct stays zero-valued, every numeric
+// field shows 0 on a fresh installation even though WithDefaults is correct.
+func TestSMSOptionDefaultsAreExported(t *testing.T) {
+	exported := config.GlobalConfig.ExportAllConfigs()
+	wants := map[string]string{
+		"sms.api":               SMSAPISendCode,
+		"sms.provider":          SMSProviderSendCloud,
+		"sms.code_ttl_seconds":  "300",
+		"sms.resend_seconds":    "60",
+		"sms.max_attempts":      "5",
+		"sms.phone_daily_limit": "10",
+		"sms.ip_hourly_limit":   "10",
+		"sms.daily_quota":       "3000",
+		"sms.msg_type":          "0",
+	}
+	for key, want := range wants {
+		if got := exported[key]; got != want {
+			t.Errorf("%s = %q, want %q", key, got, want)
+		}
 	}
 }

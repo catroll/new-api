@@ -62,6 +62,11 @@ type SMSSettings struct {
 var defaultSMSSettings = SMSSettings{}
 
 func init() {
+	// Seed the registered struct with the documented defaults. InitOptionMap
+	// exports every registered group into OptionMap, so a zero-valued struct
+	// makes the console show 0 for every numeric limit (and an empty provider)
+	// instead of the defaults below.
+	defaultSMSSettings = SMSSettings{}.WithDefaults()
 	config.GlobalConfig.Register("sms", &defaultSMSSettings)
 }
 
