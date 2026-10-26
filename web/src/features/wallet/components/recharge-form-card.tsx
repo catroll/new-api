@@ -43,6 +43,7 @@ import {
   getPaymentIcon,
   getMinTopupAmount,
   calculatePresetPricing,
+  hasConfigurableTopup as hasInfoConfigurableTopup,
 } from '../lib'
 import type {
   PaymentMethod,
@@ -131,8 +132,7 @@ export function RechargeFormCard({
   }
 
   const hasConfigurableTopup =
-    topupInfo?.enable_online_topup ||
-    topupInfo?.enable_stripe_topup ||
+    hasInfoConfigurableTopup(topupInfo) ||
     enableWaffoTopup ||
     enableWaffoPancakeTopup
   const hasAnyTopup = hasConfigurableTopup || enableCreemTopup

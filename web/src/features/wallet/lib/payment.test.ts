@@ -19,8 +19,12 @@ For commercial licensing, please contact support@quantumnous.com
 import { describe, expect, test } from 'vitest'
 
 import { PAYMENT_TYPES } from '../constants'
+import type { TopupInfo } from '../types'
 import {
   dispatchSelectedPayment,
+  getDefaultPaymentType,
+  getMinTopupAmount,
+  hasConfigurableTopup,
   isStripePayment,
   isWaffoPayment,
   isWaffoPancakePayment,
@@ -81,5 +85,53 @@ describe('payment dispatch', () => {
 
     expect(success).toBe(false)
     expect(called).toBe(false)
+  })
+})
+
+describe('gateway enablement aggregation', () => {
+  const base = {
+    enable_online_topup: false,
+    enable_stripe_topup: false,
+    enable_waffo_topup: false,
+    enable_waffo_pancake_topup: false,
+    pay_methods: [],
+    min_topup: 1,
+    stripe_min_topup: 1,
+  }
+
+  test('counts the direct Alipay gateway as an enabled top-up', () => {
+    // Regression: the wallet showed "Online topup is not enabled" while
+    // /api/user/topup/info reported the flag, because this aggregation did not
+    // list the new gateway.
+    expect(
+      hasConfigurableTopup({
+        ...base,
+        enable_alipay_topup: true,
+      } as unknown as TopupInfo)
+    ).toBe(true)
+  })
+
+  test('reports nothing enabled when every flag is false', () => {
+    expect(hasConfigurableTopup({ ...base } as unknown as TopupInfo)).toBe(false)
+    expect(hasConfigurableTopup(null)).toBe(false)
+  })
+
+  test('uses the Alipay minimum when it is the only gateway', () => {
+    expect(
+      getMinTopupAmount({
+        ...base,
+        enable_alipay_topup: true,
+        alipay_min_topup: 5,
+      } as unknown as TopupInfo)
+    ).toBe(5)
+  })
+
+  test('defaults to the direct Alipay method when it is the only one', () => {
+    expect(
+      getDefaultPaymentType({
+        ...base,
+        enable_alipay_topup: true,
+      } as unknown as TopupInfo)
+    ).toBe(PAYMENT_TYPES.ALIPAY_DIRECT)
   })
 })
