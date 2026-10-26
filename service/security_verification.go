@@ -75,7 +75,6 @@ type ChannelKeyReadContext struct {
 type AccountBindingContext struct {
 	Provider string `json:"provider"`
 	Email    string `json:"email,omitempty"`
-	Phone    string `json:"phone,omitempty"`
 	Code     string `json:"code,omitempty"`
 }
 
@@ -180,11 +179,6 @@ func BindVerificationOperation(operation VerificationOperation) (VerificationBin
 		case "email":
 			context.Email = model.NormalizeEmail(context.Email)
 			if len(fields) != 2 || common.Validate.Var(context.Email, "required,email") != nil || context.Code != "" {
-				return VerificationBinding{}, ErrVerificationContextInvalid
-			}
-		case "phone":
-			context.Phone = model.NormalizePhone(context.Phone)
-			if len(fields) != 2 || model.ValidateNormalizedPhone(context.Phone) != nil || context.Email != "" || context.Code != "" {
 				return VerificationBinding{}, ErrVerificationContextInvalid
 			}
 		case "wechat":

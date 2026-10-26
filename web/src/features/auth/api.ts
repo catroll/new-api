@@ -326,17 +326,12 @@ export async function sendBindPhoneCode(phone: string): Promise<ApiResponse> {
   return res.data
 }
 
-// Bind the phone with the code and the account.binding.bind proof.
+// Bind the phone once the code for that number has been verified.
 export async function bindPhone(
   payload: PhoneBindPayload,
-  proofToken: string,
   signal?: AbortSignal
 ): Promise<ApiResponse> {
-  const res = await api.post('/api/user/phone/bind', payload, {
-    headers: { 'X-Security-Proof': proofToken },
-    singleUseAuthorization: true,
-    signal,
-  })
+  const res = await api.post('/api/user/phone/bind', payload, { signal })
   return res.data
 }
 

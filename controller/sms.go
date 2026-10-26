@@ -6,7 +6,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	smsprovider "github.com/QuantumNous/new-api/service/sms"
@@ -120,18 +119,23 @@ func SendPhoneBindCode(c *gin.Context) {
 	common.ApiSuccess(c, nil)
 }
 
-// BindPhone attaches the number after the code and the step-up proof for
-// account.binding.bind have been verified.
+// BindPhone attaches the number once the SMS code for it has been verified.
+//
+// Unlike email binding, this deliberately does not require a step-up proof:
+// the code already proves control of the number, and asking for the password
+// again right after entering the code was confusing for users. The trade-off is
+// recorded in the plan document: a stolen session can bind an attacker's own
+// number and keep SMS access after the victim revokes sessions.
 func BindPhone(c *gin.Context) {
-	identity, ok := middleware.GetStepUpIdentity(c)
-	if !ok {
+	userID := c.GetInt("id")
+	if userID <= 0 {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)
 		return
 	}
 
 	var request smsPhoneRequest
 	if err := common.DecodeJson(c.Request.Body, &request); err != nil {
-		writeSecurityOperationError(c, service.ErrVerificationContextInvalid)
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	phone, err := service.NormalizePhoneInput(request.Phone)
@@ -140,30 +144,17 @@ func BindPhone(c *gin.Context) {
 		return
 	}
 
-	proofContext, err := common.Marshal(service.AccountBindingContext{Provider: "phone", Phone: phone})
-	if err != nil {
-		writeSMSError(c, err)
-		return
-	}
-	authorization := middleware.RequireSecurityProof(c, service.VerificationOperation{
-		Scope:   service.VerificationScopeAccountBind,
-		Context: proofContext,
-	})
-	if authorization == nil {
-		return
-	}
-
 	succeeded := false
 	defer func() {
-		recordUserSecurityAudit(c, identity.UserID, "user.phone_bind", map[string]any{"success": succeeded})
+		recordUserSecurityAudit(c, userID, "user.phone_bind", map[string]any{"success": succeeded})
 	}()
-	if _, err := service.FinishPhoneBind(c.Request.Context(), identity.UserID, phone, request.Code); err != nil {
+	if _, err := service.FinishPhoneBind(c.Request.Context(), userID, phone, request.Code); err != nil {
 		writeSMSError(c, err)
 		return
 	}
 	succeeded = true
 
-	user, err := model.GetSelfUserById(identity.UserID)
+	user, err := model.GetSelfUserById(userID)
 	if err != nil {
 		common.ApiError(c, err)
 		return

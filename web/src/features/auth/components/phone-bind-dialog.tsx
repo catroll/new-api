@@ -26,10 +26,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { bindPhone, sendBindPhoneCode } from '@/features/auth/api'
-import {
-  SecureVerificationDialog,
-  useSecureVerification,
-} from '@/features/auth/secure-verification'
 import { useCountdown } from '@/hooks/use-countdown'
 import { useStatus } from '@/hooks/use-status'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -59,7 +55,6 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
     isActive: countdownActive,
     start: startCountdown,
   } = useCountdown({ initialSeconds: 60 })
-  const { requestVerification, isActive, dialogProps } = useSecureVerification()
 
   const countryCode = String(
     status?.sms_default_country_code ??
@@ -108,15 +103,10 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
     }
     setIsSubmitting(true)
     try {
-      const proof = await requestVerification({
-        scope: 'account.binding.bind',
-        context: { provider: 'phone', phone: trimmedPhone },
+      const res = await bindPhone({
+        phone: trimmedPhone,
+        code: trimmedCode,
       })
-      if (!proof) return
-      const res = await bindPhone(
-        { phone: trimmedPhone, code: trimmedCode },
-        proof.proof_token
-      )
       if (res?.success) {
         toast.success(t('Phone number bound successfully'))
         props.onSuccess?.()
@@ -141,76 +131,73 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
   }
 
   return (
-    <>
-      <Dialog
-        open={props.open}
-        onOpenChange={props.onOpenChange}
-        title={t('Bind phone number')}
-        description={t(
-          'Bind a phone number to sign in with a code and to recover your password by SMS.'
-        )}
-        contentClassName='max-w-sm'
-        headerClassName='text-left'
-        contentHeight='auto'
-        bodyClassName='space-y-4'
-        footer={
-          <>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => props.onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              {t('Cancel')}
-            </Button>
-            <Button
-              type='button'
-              onClick={handleSubmit}
-              disabled={isSubmitting || !phone.trim() || !code.trim()}
-            >
-              {isSubmitting ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
-              {t('Bind')}
-            </Button>
-          </>
-        }
-      >
-        <div className='grid gap-2'>
-          <Label htmlFor='phone-bind-number'>{t('Phone number')}</Label>
+    <Dialog
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title={t('Bind phone number')}
+      description={t(
+        'Bind a phone number to sign in with a code and to recover your password by SMS.'
+      )}
+      contentClassName='max-w-sm'
+      headerClassName='text-left'
+      contentHeight='auto'
+      bodyClassName='space-y-4'
+      footer={
+        <>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => props.onOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            {t('Cancel')}
+          </Button>
+          <Button
+            type='button'
+            onClick={handleSubmit}
+            disabled={isSubmitting || !phone.trim() || !code.trim()}
+          >
+            {isSubmitting ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
+            {t('Bind')}
+          </Button>
+        </>
+      }
+    >
+      <div className='grid gap-2'>
+        <Label htmlFor='phone-bind-number'>{t('Phone number')}</Label>
+        <Input
+          id='phone-bind-number'
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          placeholder={`${countryCode} 13800138000`}
+          inputMode='tel'
+          autoComplete='tel'
+        />
+        <p className='text-muted-foreground text-xs'>
+          {t('Mainland numbers can be typed without the country code.')}
+        </p>
+      </div>
+      <div className='grid gap-2'>
+        <Label htmlFor='phone-bind-code'>{t('Verification code')}</Label>
+        <div className='flex gap-2'>
           <Input
-            id='phone-bind-number'
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder={`${countryCode} 13800138000`}
-            inputMode='tel'
-            autoComplete='tel'
+            id='phone-bind-code'
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder={t('Enter the verification code')}
+            autoComplete='one-time-code'
           />
-          <p className='text-muted-foreground text-xs'>
-            {t('Mainland numbers can be typed without the country code.')}
-          </p>
+          <Button
+            type='button'
+            variant='outline'
+            className='shrink-0'
+            disabled={isSending || countdownActive || !phone.trim()}
+            onClick={handleSendCode}
+          >
+            {codeAction}
+          </Button>
         </div>
-        <div className='grid gap-2'>
-          <Label htmlFor='phone-bind-code'>{t('Verification code')}</Label>
-          <div className='flex gap-2'>
-            <Input
-              id='phone-bind-code'
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              placeholder={t('Enter the verification code')}
-              autoComplete='one-time-code'
-            />
-            <Button
-              type='button'
-              variant='outline'
-              className='shrink-0'
-              disabled={isSending || countdownActive || !phone.trim()}
-              onClick={handleSendCode}
-            >
-{codeAction}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
-      {isActive && <SecureVerificationDialog {...dialogProps} />}
-    </>
+      </div>
+    </Dialog>
   )
 }

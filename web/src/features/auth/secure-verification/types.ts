@@ -54,7 +54,7 @@ export type VerificationOperation =
   | { scope: 'channel.key.read'; context: { channel_id: number } }
   | {
       scope: 'account.binding.bind'
-      context: { provider: string; email?: string; phone?: string; code?: string }
+      context: { provider: string; email?: string; code?: string }
     }
   | { scope: 'account.binding.unbind'; context: { provider_id: number } }
   | { scope: 'admin.user.create'; context: { role: number } }
