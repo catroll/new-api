@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-pay/gopay"
@@ -93,6 +94,31 @@ func getAlipayMoney(amount int64, group string) (float64, string) {
 	return d.InexactFloat64(), d.StringFixed(2)
 }
 
+// getAlipayMinTopup is the minimum this gateway accepts, in the same unit the
+// wallet sends (quota units). The wallet displays setting.AlipayMinTopUp, so the
+// handler must enforce the same number instead of the global MinTopUp.
+func getAlipayMinTopup() int64 {
+	minTopUp := int64(setting.AlipayMinTopUp)
+	if minTopUp <= 0 {
+		minTopUp = getMinTopup()
+	}
+	return minTopUp
+}
+
+// requireCNYPricing refuses requests when the console quotes another currency.
+// Alipay charges CNY, while getPayMoney multiplies by Price in the display
+// currency: a hidden button is not enough, a direct API call must not create a
+// mispriced order either.
+func requireCNYPricing(c *gin.Context) bool {
+	if operation_setting.IsCNYDisplay() {
+		return true
+	}
+	logger.LogWarn(c.Request.Context(), common.LogText("Alipay request rejected reason=display_currency_is_not_cny path=%q user_id=%d",
+		c.Request.RequestURI, c.GetInt("id")))
+	paymentError(c, common.NewMessage("This gateway requires the console currency to be CNY"))
+	return false
+}
+
 // isMobileDevice decides between 手机网站支付 and 电脑网站支付.
 func isMobileDevice(ua string, hint string) bool {
 	switch strings.ToLower(strings.TrimSpace(hint)) {
@@ -129,8 +155,11 @@ func RequestAlipayAmount(c *gin.Context) {
 		paymentError(c, common.NewMessage("Invalid parameters"))
 		return
 	}
-	if req.Amount < getMinTopup() {
-		paymentError(c, common.NewMessage("Top-up amount cannot be less than {{min}}", map[string]any{"min": getMinTopup()}))
+	if !requireCNYPricing(c) {
+		return
+	}
+	if req.Amount < getAlipayMinTopup() {
+		paymentError(c, common.NewMessage("Top-up amount cannot be less than {{min}}", map[string]any{"min": getAlipayMinTopup()}))
 		return
 	}
 	id := c.GetInt("id")
@@ -161,8 +190,11 @@ func RequestAlipayPay(c *gin.Context) {
 		paymentError(c, common.NewMessage("Unsupported payment channel"))
 		return
 	}
-	if req.Amount < getMinTopup() {
-		paymentError(c, common.NewMessage("Top-up amount cannot be less than {{min}}", map[string]any{"min": getMinTopup()}))
+	if !requireCNYPricing(c) {
+		return
+	}
+	if req.Amount < getAlipayMinTopup() {
+		paymentError(c, common.NewMessage("Top-up amount cannot be less than {{min}}", map[string]any{"min": getAlipayMinTopup()}))
 		return
 	}
 

@@ -60,6 +60,13 @@ func setupAlipayTestDB(t *testing.T) *model.User {
 	previousMain, previousLog := common.MainDatabaseType(), common.LogDatabaseType()
 	previousRedis := common.RedisEnabled
 
+	// model.InitDB() initialises the dialect-specific column names
+	// (`group` vs "group") that GetUserGroup relies on. It opens a throwaway
+	// SQLite database; the in-memory one below replaces it, but without this call
+	// the column names stay empty and every GROUP query fails with a syntax error
+	// — which only shows up when this test runs alone.
+	require.NoError(t, model.InitDB())
+
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 	require.NoError(t, i18n.Init())
@@ -449,4 +456,64 @@ func TestYuanToFenAlipay(t *testing.T) {
 		_, err := yuanToFen(bad)
 		assert.Error(t, err, bad)
 	}
+}
+
+// The wallet displays setting.AlipayMinTopUp, so the handler has to enforce that
+// number rather than the global MinTopUp.
+func TestRequestAlipayAmountEnforcesGatewayMinimum(t *testing.T) {
+	keys := newAlipayTestKeys(t)
+	enableAlipayForTest(t, keys)
+	previousMin := setting.AlipayMinTopUp
+	setting.AlipayMinTopUp = 5
+	t.Cleanup(func() { setting.AlipayMinTopUp = previousMin })
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.POST("/api/user/alipay/amount", RequestAlipayAmount)
+
+	body, err := json.Marshal(AlipayPayRequest{Amount: 3, PaymentMethod: model.PaymentMethodAlipayDirect})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/user/alipay/amount", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	// paymentError answers 200 with a message payload.
+	var response struct {
+		Message string `json:"message"`
+		Data    string `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+	assert.NotEqual(t, "success", response.Message)
+	assert.Contains(t, rec.Body.String(), "5", "the message must quote the Alipay minimum")
+}
+
+// A USD-quoted console would charge CNY for a USD number; refuse it server-side
+// even though the wallet hides the button.
+func TestRequestAlipayPayRejectsNonCNYDisplay(t *testing.T) {
+	keys := newAlipayTestKeys(t)
+	user := setupAlipayTestDB(t)
+	enableAlipayForTest(t, keys)
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.POST("/api/user/alipay/pay", func(c *gin.Context) {
+		c.Set("id", user.Id)
+		RequestAlipayPay(c)
+	})
+
+	body, err := json.Marshal(AlipayPayRequest{Amount: 1, PaymentMethod: model.PaymentMethodAlipayDirect})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/user/alipay/pay", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.NotContains(t, rec.Body.String(), "pay_url")
+	assert.Contains(t, rec.Body.String(), "CNY")
+
+	var count int64
+	require.NoError(t, model.DB.Model(&model.TopUp{}).Count(&count).Error)
+	assert.Zero(t, count, "a rejected request must not leave an order behind")
 }
