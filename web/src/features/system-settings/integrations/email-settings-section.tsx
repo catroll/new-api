@@ -17,11 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo } from 'react'
+import { Loader2, Send } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 import { PasswordInput } from '@/components/password-input'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -35,9 +38,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
+import { api } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import { parseQuotaFromDollars, quotaUnitsToDollars } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
+import { requireServerSuccess } from '@/lib/server-error-message'
 
 import {
   SettingsControlChildren,
@@ -105,6 +110,28 @@ export function EmailSettingsSection({
   const tokensOnly = getCurrencyDisplay().meta.kind === 'tokens'
   const isSaving = form.formState.isSubmitting || updateOption.isPending
   useResetForm(form, isSaving ? undefined : initialValues)
+
+  const [testEmail, setTestEmail] = useState('')
+  const [isTesting, setIsTesting] = useState(false)
+
+  // The endpoint sends with the configuration the server already saved, so an
+  // unsaved edit is not part of the test; the hint below says so.
+  const sendTestEmail = async () => {
+    const recipient = testEmail.trim()
+    if (!recipient || isTesting) return
+    setIsTesting(true)
+    try {
+      const response = await api.post('/api/option/email/test', {
+        email: recipient,
+      })
+      requireServerSuccess(response.data)
+      toast.success(t('Test email sent'), { description: recipient })
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setIsTesting(false)
+    }
+  }
 
   const onSubmit = async (values: EmailFormValues) => {
     const securityMode = getSmtpSecurityMode(values)
@@ -583,6 +610,44 @@ export function EmailSettingsSection({
               />
             </>
           )}
+          <div
+            data-settings-form-span='full'
+            className='min-w-0 space-y-2 rounded-xl border px-3 py-2.5'
+          >
+            <Label htmlFor='email-test-recipient'>
+              {t('Send test email')}
+            </Label>
+            <div className='flex flex-col gap-2 sm:flex-row'>
+              <Input
+                id='email-test-recipient'
+                autoComplete='off'
+                type='email'
+                placeholder='you@example.com'
+                value={testEmail}
+                onChange={(event) => setTestEmail(event.target.value)}
+                disabled={isTesting}
+                className='sm:max-w-64'
+              />
+              <Button
+                type='button'
+                variant='outline'
+                onClick={sendTestEmail}
+                disabled={isTesting || !testEmail.trim()}
+              >
+                {isTesting ? (
+                  <Loader2 data-icon='inline-start' className='animate-spin' />
+                ) : (
+                  <Send data-icon='inline-start' />
+                )}
+                <span>{t('Send test email')}</span>
+              </Button>
+            </div>
+            <p className='text-muted-foreground text-xs'>
+              {t(
+                'A real test email is sent with the saved configuration, so save your changes first.'
+              )}
+            </p>
+          </div>
           <SettingsControlGroup>
             <FormField
               control={form.control}

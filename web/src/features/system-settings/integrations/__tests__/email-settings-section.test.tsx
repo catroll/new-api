@@ -341,4 +341,28 @@ describe('email delivery settings', () => {
       ])
     }
   })
+  it('sends one test email to the typed address through the saved configuration', async () => {
+    const request = vi
+      .spyOn(api, 'post')
+      .mockResolvedValue({ data: { success: true } })
+    const user = renderEmail()
+    const recipient = screen.getByRole('textbox', { name: 'Send test email' })
+    expect(
+      screen.getByRole('button', { name: 'Send test email' })
+    ).toBeDisabled()
+    await user.type(recipient, 'ops@example.com')
+    await user.click(screen.getByRole('button', { name: 'Send test email' }))
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/api/option/email/test', {
+        email: 'ops@example.com',
+      })
+    )
+    expect(request).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Send test email' })
+      ).toBeEnabled()
+    )
+  })
+
 })
