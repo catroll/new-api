@@ -1,7 +1,6 @@
 package system_setting
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -143,18 +142,18 @@ func (s SMSSettings) Validate() error {
 	switch s.Provider {
 	case SMSProviderSendCloud, SMSProviderConsole:
 	default:
-		return errors.New("SMS provider must be sendcloud or console")
+		return common.NewMessage("SMS provider must be sendcloud or console")
 	}
 	switch s.API {
 	case SMSAPISendCode, SMSAPISend:
 	default:
-		return errors.New("SMS API must be sendCode or send")
+		return common.NewMessage("SMS API must be sendCode or send")
 	}
 	if s.API == SMSAPISend && s.TemplateID <= 0 {
-		return errors.New("A template id is required when the SMS API is send")
+		return common.NewMessage("A template id is required when the SMS API is send")
 	}
 	if s.Enabled && !s.ProviderConfigured() {
-		return errors.New("SMS credentials and signature must be configured before enabling SMS")
+		return common.NewMessage("SMS credentials and signature must be configured before enabling SMS")
 	}
 	return nil
 }

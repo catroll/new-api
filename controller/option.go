@@ -490,13 +490,10 @@ func validateSMSOption(key, value string) error {
 	if settings.RequirePhone && !settings.Enabled {
 		return common.NewMessage("Enable SMS before requiring a phone at registration")
 	}
-	if settings.Enabled && settings.RequirePhone {
-		if common.EmailVerificationEnabled {
-			return common.NewMessage("SMS verification and email verification cannot be enabled at the same time")
-		}
-		if !common.PasswordRegisterEnabled {
-			return common.NewMessage("Enable password registration before requiring a phone, otherwise no account could be created")
-		}
+	if settings.Enabled && settings.RequirePhone && common.EmailVerificationEnabled {
+		// OAuth/WeChat signup stays available without password registration:
+		// those accounts simply get the bind reminder after login.
+		return common.NewMessage("SMS verification and email verification cannot be enabled at the same time")
 	}
 	return nil
 }
