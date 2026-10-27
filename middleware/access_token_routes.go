@@ -154,6 +154,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/option/model_pricing/convert":                     accessTokenScopeRule("option:read"),
 	"POST /api/option/model_pricing/preview":                     accessTokenScopeRule("option:read"),
 	"POST /api/option/payment_compliance":                        accessTokenSessionRule,
+	"POST /api/option/email/test":                                accessTokenScopeRule("option:write"),
 	"GET /api/option/channel_affinity_cache":                     accessTokenScopeRule("option:read"),
 	"DELETE /api/option/channel_affinity_cache":                  accessTokenScopeRule("option:write"),
 	"POST /api/option/rest_model_ratio":                          accessTokenScopeRule("option:write"),
