@@ -45,8 +45,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 import { getPaymentErrorTranslation } from '@/features/wallet/lib/payment'
 import { handleServerError } from '@/lib/handle-server-error'
 import { cn } from '@/lib/utils'
@@ -106,6 +106,10 @@ const paymentSchema = z.object({
   EpayId: z.string(),
   EpayKey: z.string(),
   Price: z.coerce.number().min(0),
+  // Price is the amount the gateways charge per USD of quota. A site that also
+  // refreshes the exchange rate can let that job maintain this number, so the
+  // switch belongs next to the value it overwrites, not on another page.
+  PriceFollowsExchangeRate: z.boolean(),
   MinTopUp: z.coerce.number().min(0),
   CustomCallbackAddress: z
     .string()
@@ -368,6 +372,7 @@ export function PaymentSettingsSection({
   })
 
   const { isSubmitting } = form.formState
+  const priceFollowsRate = form.watch('PriceFollowsExchangeRate')
 
   const setPaymentValue = React.useCallback(
     (
@@ -430,6 +435,7 @@ export function PaymentSettingsSection({
       EpayId: values.EpayId.trim(),
       EpayKey: values.EpayKey.trim(),
       Price: values.Price,
+      PriceFollowsExchangeRate: values.PriceFollowsExchangeRate,
       MinTopUp: values.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
       PayMethods: values.PayMethods.trim(),
@@ -540,6 +546,15 @@ export function PaymentSettingsSection({
 
     if (sanitized.Price !== initial.Price) {
       updates.push({ key: 'Price', value: sanitized.Price })
+    }
+
+    if (
+      sanitized.PriceFollowsExchangeRate !== initial.PriceFollowsExchangeRate
+    ) {
+      updates.push({
+        key: 'PriceFollowsExchangeRate',
+        value: sanitized.PriceFollowsExchangeRate,
+      })
     }
 
     if (sanitized.MinTopUp !== initial.MinTopUp) {
@@ -972,13 +987,18 @@ export function PaymentSettingsSection({
                             type='number'
                             step='0.01'
                             min={0}
+                            disabled={priceFollowsRate}
                             {...safeNumberFieldProps(field)}
                           />
                         </FormControl>
                         <FormDescription>
-                          {t(
-                            'How much to charge for each US dollar of balance (Epay)'
-                          )}
+                          {priceFollowsRate
+                            ? t(
+                                'Updated by the exchange-rate job; turn the switch below off to edit it by hand.'
+                              )
+                            : t(
+                                'Charged per US dollar of balance, for every gateway including Alipay and Epay.'
+                              )}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1007,6 +1027,31 @@ export function PaymentSettingsSection({
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name='PriceFollowsExchangeRate'
+                  render={({ field }) => (
+                    <SettingsSwitchItem>
+                      <SettingsSwitchContent>
+                        <FormLabel>
+                          {t('Keep the price in sync with the exchange rate')}
+                        </FormLabel>
+                        <FormDescription>
+                          {t(
+                            'Every refresh writes Price as well as the rate, so a dollar-priced catalogue charges the current renminbi amount. Leave off when the price is a fixed unit price, such as 1 yuan per unit.'
+                          )}
+                        </FormDescription>
+                      </SettingsSwitchContent>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </SettingsSwitchItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}

@@ -7486,8 +7486,6 @@
     "Payment Currency": "支付货币",
     "Select payment currency": "选择支付货币",
     "Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.": "网关实际收取的货币。与展示货币无关：按美元定价的站点也可以用人民币收款。",
-    "Price follows the exchange rate": "充值价格跟随汇率",
-    "Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.": "每次刷新时同步更新 Price，使人民币收款跟随市场汇率。人民币原生站点（一个单位一元）请关闭。",
     "Rate Refresh Interval (minutes)": "汇率刷新间隔（分钟）",
     "0 disables the job. Enabling it takes effect without a restart.": "填 0 表示关闭。启用后无需重启即可生效。",
     "Rate Endpoint": "汇率接口地址",
@@ -7501,6 +7499,10 @@
     "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.": "当前展示模式不用它换算价格；它仍用于账单导出与「按充值价显示」。",
     "Last updated: {{time}}": "上次更新：{{time}}",
     "Never updated": "尚未更新过",
-    "Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable.": "尚未开通跨境收款：支付货币选 USD 会禁用支付宝，用户端显示「尚未启用在线充值」。"
+    "Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable.": "尚未开通跨境收款：支付货币选 USD 会禁用支付宝，用户端显示「尚未启用在线充值」。",
+    "Keep the price in sync with the exchange rate": "价格跟随汇率自动同步",
+    "Every refresh writes Price as well as the rate, so a dollar-priced catalogue charges the current renminbi amount. Leave off when the price is a fixed unit price, such as 1 yuan per unit.": "每次刷新汇率时同步写入价格，让按美元定价的商品始终按当前人民币金额收款。若价格是固定单价（例如一单位一元），请关闭。",
+    "Updated by the exchange-rate job; turn the switch below off to edit it by hand.": "该值由汇率任务维护；要手动修改，请先关闭下面的开关。",
+    "Charged per US dollar of balance, for every gateway including Alipay and Epay.": "每 1 美元额度收取的金额，所有网关（含支付宝与易支付）共用。"
   }
 }

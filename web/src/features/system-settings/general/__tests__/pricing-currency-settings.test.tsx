@@ -41,7 +41,6 @@ function Fixture(props: { displayInCurrency?: boolean }) {
             QuotaPerUnit: 500000,
             USDExchangeRate: 7.3,
             PaymentCurrency: 'CNY',
-            PriceFollowsExchangeRate: false,
             ExchangeRateRefreshMinutes: 0,
             ExchangeRateApiUrl: 'https://open.er-api.com/v6/latest/USD',
             ExchangeRateUpdatedAt: 0,
@@ -79,21 +78,6 @@ async function renderSettings(displayInCurrency = true) {
 
 beforeEach(() => {
   vi.restoreAllMocks()
-})
-
-// SettingsSwitchContent renders its children and nothing else: a switch given
-// title/description props instead of children renders with no text at all, which
-// is how "Price follows the exchange rate" shipped unlabelled.
-test('the price-following switch carries a label and an explanation', async () => {
-  await renderSettings()
-
-  const toggle = screen.getByRole('switch', {
-    name: 'Price follows the exchange rate',
-  })
-  expect(toggle).not.toBeChecked()
-  expect(
-    screen.getByText(/Overwrite Price with each refresh/)
-  ).toBeInTheDocument()
 })
 
 // Hidden while true, this toggle could be switched on and never off again —

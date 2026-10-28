@@ -7486,8 +7486,6 @@
     "Payment Currency": "Payment Currency",
     "Select payment currency": "Select payment currency",
     "Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.": "Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.",
-    "Price follows the exchange rate": "Price follows the exchange rate",
-    "Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.": "Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.",
     "Rate Refresh Interval (minutes)": "Rate Refresh Interval (minutes)",
     "0 disables the job. Enabling it takes effect without a restart.": "0 disables the job. Enabling it takes effect without a restart.",
     "Rate Endpoint": "Rate Endpoint",
@@ -7501,6 +7499,10 @@
     "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.": "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.",
     "Last updated: {{time}}": "Last updated: {{time}}",
     "Never updated": "Never updated",
-    "Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable.": "Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable."
+    "Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable.": "Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable.",
+    "Keep the price in sync with the exchange rate": "Keep the price in sync with the exchange rate",
+    "Every refresh writes Price as well as the rate, so a dollar-priced catalogue charges the current renminbi amount. Leave off when the price is a fixed unit price, such as 1 yuan per unit.": "Every refresh writes Price as well as the rate, so a dollar-priced catalogue charges the current renminbi amount. Leave off when the price is a fixed unit price, such as 1 yuan per unit.",
+    "Updated by the exchange-rate job; turn the switch below off to edit it by hand.": "Updated by the exchange-rate job; turn the switch below off to edit it by hand.",
+    "Charged per US dollar of balance, for every gateway including Alipay and Epay.": "Charged per US dollar of balance, for every gateway including Alipay and Epay."
   }
 }

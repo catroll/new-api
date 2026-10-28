@@ -69,7 +69,6 @@ const createPricingSchema = (t: (key: string) => string) =>
         .number()
         .min(0.0001, t('Exchange rate must be greater than 0')),
       PaymentCurrency: z.enum(['CNY', 'USD']),
-      PriceFollowsExchangeRate: z.boolean(),
       ExchangeRateRefreshMinutes: z.coerce
         .number()
         .int()
@@ -541,31 +540,6 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                   )}
                   <FormMessage />
                 </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name='PriceFollowsExchangeRate'
-              render={({ field }) => (
-                <SettingsSwitchItem>
-                  <SettingsSwitchContent>
-                    <FormLabel>
-                      {t('Price follows the exchange rate')}
-                    </FormLabel>
-                    <FormDescription>
-                      {t(
-                        'Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.'
-                      )}
-                    </FormDescription>
-                  </SettingsSwitchContent>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </SettingsSwitchItem>
               )}
             />
           </SettingsForm>
