@@ -80,31 +80,29 @@ export function ContactQr() {
 }
 
 /*
- * Stacked rather than side by side: the card is anchored to the right edge, so
- * every pixel of width it takes eats into the content column, while height is
- * free. Text on top, code below, keeps the footprint at ~190px wide.
+ * The text and the code share one 144px column: the card is anchored to the
+ * right edge, so width eats into the content column while height does not, and
+ * matching the two widths keeps the code as large as the card can afford
+ * without the headline spilling past it.
  */
 function ContactCard() {
   const { t } = useTranslation()
   return (
     <div
       data-slot='contact-qr-card'
-      className='bg-background/95 border-border/70 w-48 rounded-2xl border p-3 text-center shadow-xl backdrop-blur'
+      className='bg-background/95 border-border/70 rounded-2xl border p-3 text-center shadow-xl backdrop-blur'
     >
-      <p className='text-sm leading-snug font-semibold'>
+      <p className='mx-auto w-36 text-sm leading-snug font-semibold'>
         {t('Need more models? Contact sales.')}
       </p>
-      <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>
-        {t('Scan the QR code to add me as a friend.')}
-      </p>
-      <div className='mx-auto mt-2 w-fit rounded-lg bg-white p-1 ring-1 ring-black/5'>
+      <div className='mx-auto mt-2 w-36 overflow-hidden rounded-lg bg-white ring-1 ring-black/5'>
         <img
           src='/qr-contact-wechat.png'
           alt={t('WeChat QR code')}
-          width={80}
-          height={80}
+          width={144}
+          height={144}
           loading='lazy'
-          className='size-20 rounded'
+          className='block w-full rounded'
         />
       </div>
     </div>
