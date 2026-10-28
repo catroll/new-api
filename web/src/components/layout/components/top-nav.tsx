@@ -80,6 +80,7 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
                     ) : (
                       <Link
                         to={href}
+                        reloadDocument={href === '/'}
                         className={!isActive ? 'text-muted-foreground' : ''}
                         disabled={disabled}
                       >
@@ -117,6 +118,7 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
             <Link
               key={`${title}-${href}`}
               to={href}
+              reloadDocument={href === '/'}
               disabled={disabled}
               className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? '' : 'text-muted-foreground'}`}
             >

@@ -111,7 +111,7 @@ export function SetupWizard() {
         toast.success(t('System initialized successfully! Redirecting…'))
         await queryClient.invalidateQueries({ queryKey: ['setup-status'] })
         setTimeout(() => {
-          navigate({ to: '/' })
+          navigate({ to: '/', reloadDocument: true })
         }, 1200)
       } else {
         handleServerError(
@@ -137,7 +137,7 @@ export function SetupWizard() {
     if (!status) return
 
     if (status.status) {
-      navigate({ to: '/' })
+      navigate({ to: '/', reloadDocument: true })
       return
     }
 

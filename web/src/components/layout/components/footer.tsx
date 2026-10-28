@@ -254,7 +254,11 @@ export function Footer(props: FooterProps) {
         <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
           {/* Brand column */}
           <div className='shrink-0'>
-            <Link to='/' className='group flex items-center gap-2.5'>
+            <Link
+              to='/'
+              reloadDocument
+              className='group flex items-center gap-2.5'
+            >
               <img
                 src={displayLogo}
                 alt={displayName}

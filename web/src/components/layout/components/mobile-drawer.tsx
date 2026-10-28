@@ -56,6 +56,7 @@ function BrandLogo({
   return (
     <Link
       to={homeUrl}
+      reloadDocument
       className='flex items-center gap-2 text-xl font-bold'
       onClick={onClick}
     >

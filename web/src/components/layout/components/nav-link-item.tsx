@@ -53,7 +53,12 @@ export function NavLinkItem({ link, className }: NavLinkItemProps) {
   }
 
   return (
-    <Link to={link.href} className={linkClassName} disabled={link.disabled}>
+    <Link
+      to={link.href}
+      reloadDocument={link.href === '/'}
+      className={linkClassName}
+      disabled={link.disabled}
+    >
       {link.title}
     </Link>
   )

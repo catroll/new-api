@@ -109,7 +109,7 @@ export function GeneralError({
             >
               {t('Report an issue')}
             </Button>
-            <Button onClick={() => navigate({ to: '/' })}>
+            <Button onClick={() => navigate({ to: '/', reloadDocument: true })}>
               {t('Back to Home')}
             </Button>
           </div>
