@@ -26,10 +26,14 @@ import (
 func GetTopUpInfo(c *gin.Context) {
 	complianceConfirmed := operation_setting.IsPaymentComplianceConfirmed()
 
-	// 获取支付方式
-	payMethods := operation_setting.PayMethods
-	if !complianceConfirmed {
-		payMethods = []map[string]string{}
+	// PayMethods is the aggregator's channel list, pre-seeded with 支付宝/微信/自定义1.
+	// Publishing it while the aggregator has no merchant account puts buttons on the
+	// wallet that nobody can pay with: a site that only wired the direct Alipay
+	// adapter must advertise exactly one channel. isEpayTopUpEnabled also covers the
+	// compliance gate, so a site that has not signed the terms gets an empty list.
+	payMethods := []map[string]string{}
+	if isEpayTopUpEnabled() {
+		payMethods = append(payMethods, operation_setting.PayMethods...)
 	}
 
 	// The direct Alipay adapter replaces the aggregator's "alipay" channel: leaving
