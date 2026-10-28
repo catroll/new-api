@@ -44,6 +44,7 @@ function Fixture(props: { displayInCurrency?: boolean }) {
             PriceFollowsExchangeRate: false,
             ExchangeRateRefreshMinutes: 0,
             ExchangeRateApiUrl: 'https://open.er-api.com/v6/latest/USD',
+            ExchangeRateUpdatedAt: 0,
             DisplayInCurrencyEnabled: props.displayInCurrency ?? true,
             DisplayTokenStatEnabled: true,
             general_setting: {
@@ -106,14 +107,21 @@ test('the currency-display switch stays reachable once enabled', async () => {
 
 test('refreshing the rate updates the field it just changed', async () => {
   vi.spyOn(api, 'post').mockResolvedValue({
-    data: { success: true, data: { rate: 6.681, price: 6.681 } },
+    data: {
+      success: true,
+      data: { rate: 6.681, price: 6.681, updated_at: 1793000000 },
+    },
   })
   const user = userEvent.setup()
   const input = await renderSettings()
   expect(input).toHaveValue(7.3)
+  expect(screen.getByText('Never updated')).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Refresh now' }))
 
   await waitFor(() => expect(input).toHaveValue(6.681))
   expect(api.post).toHaveBeenCalledWith('/api/option/exchange_rate/refresh')
+  // The button updates a value it does not own the way a save does, so the page
+  // has to say how fresh that value is.
+  expect(screen.getByText(/Last updated:/)).toBeInTheDocument()
 })

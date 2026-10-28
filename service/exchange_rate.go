@@ -98,6 +98,12 @@ func RefreshExchangeRate(ctx context.Context) (float64, error) {
 		}
 	}
 
+	// The timestamp is metadata: losing it must not fail a refresh whose rate is
+	// already written, so it is reported and otherwise ignored.
+	if err = model.UpdateOption("ExchangeRateUpdatedAt", strconv.FormatInt(time.Now().Unix(), 10)); err != nil {
+		logger.LogWarn(ctx, common.LogText("persist ExchangeRateUpdatedAt failed error=%q", err.Error()))
+	}
+
 	logger.LogInfo(ctx, common.LogText("exchange rate refreshed usd_cny=%s price=%s price_follows=%t",
 		rateText, strconv.FormatFloat(operation_setting.Price, 'f', -1, 64), setting.PriceFollowsExchangeRate))
 	return rate, nil

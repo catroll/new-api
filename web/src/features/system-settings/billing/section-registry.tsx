@@ -91,6 +91,7 @@ const BILLING_SECTIONS = [
           PriceFollowsExchangeRate: settings.PriceFollowsExchangeRate,
           ExchangeRateRefreshMinutes: settings.ExchangeRateRefreshMinutes,
           ExchangeRateApiUrl: settings.ExchangeRateApiUrl,
+          ExchangeRateUpdatedAt: settings.ExchangeRateUpdatedAt,
           DisplayInCurrencyEnabled: settings.DisplayInCurrencyEnabled,
           DisplayTokenStatEnabled: settings.DisplayTokenStatEnabled,
           general_setting: {

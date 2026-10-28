@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
+import { useState } from 'react'
 import type { Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -149,6 +150,9 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
     })
 
   const queryClient = useQueryClient()
+  const [rateUpdatedAt, setRateUpdatedAt] = useState(
+    defaultValues.ExchangeRateUpdatedAt ?? 0
+  )
 
   // The refresh writes USDExchangeRate on the server, so the input that shows it
   // has to move with it. Leaving the stale value in the form is not merely
@@ -164,6 +168,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
       const rate = data.data?.rate
       if (typeof rate === 'number') {
         form.setValue('USDExchangeRate', rate, { shouldDirty: false })
+        setRateUpdatedAt(data.data?.updated_at ?? Math.floor(Date.now() / 1000))
         // Everything outside this page reads the rate from /api/status.
         queryClient.invalidateQueries({ queryKey: ['status'] })
       }
@@ -376,6 +381,13 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                 {endpointDirty
                   ? t('Save the endpoint first: a refresh uses the saved one.')
                   : t('Fetches the endpoint and writes this field.')}
+              </span>
+              <span className='text-muted-foreground ml-auto text-xs tabular-nums'>
+                {rateUpdatedAt > 0
+                  ? t('Last updated: {{time}}', {
+                      time: new Date(rateUpdatedAt * 1000).toLocaleString(),
+                    })
+                  : t('Never updated')}
               </span>
             </div>
 

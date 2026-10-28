@@ -284,6 +284,7 @@ export type BillingSettings = {
   PriceFollowsExchangeRate: boolean
   ExchangeRateRefreshMinutes: number
   ExchangeRateApiUrl: string
+  ExchangeRateUpdatedAt: number
   'general_setting.quota_display_type': string
   'general_setting.custom_currency_symbol': string
   'general_setting.custom_currency_exchange_rate': number

@@ -28,3 +28,8 @@ var ExchangeRateRefreshMinutes = 0
 // configurable because the deployments sit in different regions and a source that
 // is reachable from one is not necessarily reachable from the other.
 var ExchangeRateApiUrl = "https://open.er-api.com/v6/latest/USD"
+
+// ExchangeRateUpdatedAt is the unix time of the last successful refresh. It is
+// written by the job, never by an administrator, and only exists so the console
+// can say how old the number it is showing is.
+var ExchangeRateUpdatedAt int64 = 0

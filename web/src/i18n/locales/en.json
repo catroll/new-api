@@ -7499,6 +7499,8 @@
     "Save the endpoint first: a refresh uses the saved one.": "Save the endpoint first: a refresh uses the saved one.",
     "Cross-border acquiring is not enabled yet, so Alipay refuses every order while this is USD.": "Cross-border acquiring is not enabled yet, so Alipay refuses every order while this is USD.",
     "One unit of quota is shown as this many yuan. The rate job accepts 3.0-15.0.": "One unit of quota is shown as this many yuan. The rate job accepts 3.0-15.0.",
-    "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.": "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view."
+    "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.": "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.",
+    "Last updated: {{time}}": "Last updated: {{time}}",
+    "Never updated": "Never updated"
   }
 }

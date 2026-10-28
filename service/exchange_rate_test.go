@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -114,6 +115,7 @@ func TestRefreshExchangeRateWritesBothSettings(t *testing.T) {
 	var stored model.Option
 	require.NoError(t, model.DB.Where("key = ?", "Price").First(&stored).Error)
 	assert.Equal(t, "7.31", stored.Value, "the new price must survive a restart")
+	assert.Greater(t, setting.ExchangeRateUpdatedAt, time.Now().Add(-time.Minute).Unix())
 }
 
 // TestRefreshExchangeRateKeepsFixedPrice is the CNY-native deployment: one unit

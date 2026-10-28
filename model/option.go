@@ -110,6 +110,7 @@ func InitOptionMap() {
 	common.OptionMap["PriceFollowsExchangeRate"] = strconv.FormatBool(setting.PriceFollowsExchangeRate)
 	common.OptionMap["ExchangeRateRefreshMinutes"] = strconv.Itoa(setting.ExchangeRateRefreshMinutes)
 	common.OptionMap["ExchangeRateApiUrl"] = setting.ExchangeRateApiUrl
+	common.OptionMap["ExchangeRateUpdatedAt"] = strconv.FormatInt(setting.ExchangeRateUpdatedAt, 10)
 	common.OptionMap["CreemApiKey"] = setting.CreemApiKey
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
@@ -578,6 +579,8 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ExchangeRateRefreshMinutes, _ = strconv.Atoi(value)
 	case "ExchangeRateApiUrl":
 		setting.ExchangeRateApiUrl = value
+	case "ExchangeRateUpdatedAt":
+		setting.ExchangeRateUpdatedAt, _ = strconv.ParseInt(value, 10, 64)
 	case "CreemApiKey":
 		setting.CreemApiKey = value
 	case "CreemProducts":

@@ -24,6 +24,7 @@ func RefreshExchangeRate(c *gin.Context) {
 			"rate":                   rate,
 			"price":                  operation_setting.Price,
 			"price_follows_exchange": setting.PriceFollowsExchangeRate,
+			"updated_at":             setting.ExchangeRateUpdatedAt,
 		},
 	})
 }

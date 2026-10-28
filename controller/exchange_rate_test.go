@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -61,14 +62,16 @@ func TestRefreshExchangeRateEndpoint(t *testing.T) {
 	var body struct {
 		Success bool `json:"success"`
 		Data    struct {
-			Rate  float64 `json:"rate"`
-			Price float64 `json:"price"`
+			Rate      float64 `json:"rate"`
+			Price     float64 `json:"price"`
+			UpdatedAt int64   `json:"updated_at"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.True(t, body.Success)
 	assert.InDelta(t, 7.2543, body.Data.Rate, 1e-9)
 	assert.InDelta(t, 7.2543, body.Data.Price, 1e-9, "Price follows the rate when enabled")
+	assert.Greater(t, body.Data.UpdatedAt, time.Now().Add(-time.Minute).Unix(), "the console shows how old the rate is")
 
 	var stored model.Option
 	require.NoError(t, model.DB.Where("key = ?", "USDExchangeRate").First(&stored).Error)
