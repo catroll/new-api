@@ -46,6 +46,23 @@ describe('payment settings defaults', () => {
     expect(merged.AlipayMinTopUp).toBe(5)
   })
 
+  test('currency and rate options survive the merge', () => {
+    const merged = getOptionValue(
+      [
+        { key: 'PaymentCurrency', value: 'CNY' },
+        { key: 'PriceFollowsExchangeRate', value: 'true' },
+        { key: 'ExchangeRateRefreshMinutes', value: '360' },
+        { key: 'ExchangeRateApiUrl', value: 'https://rates.example/usd' },
+      ],
+      defaultBillingSettings
+    )
+
+    expect(merged.PaymentCurrency).toBe('CNY')
+    expect(merged.PriceFollowsExchangeRate).toBe(true)
+    expect(merged.ExchangeRateRefreshMinutes).toBe(360)
+    expect(merged.ExchangeRateApiUrl).toBe('https://rates.example/usd')
+  })
+
   test('every payment gateway option the console edits has a default', () => {
     const editedKeys = [
       'AlipayAppId',
@@ -63,6 +80,10 @@ describe('payment settings defaults', () => {
       'CreemWebhookSecret',
       'CreemTestMode',
       'CreemProducts',
+      'PaymentCurrency',
+      'PriceFollowsExchangeRate',
+      'ExchangeRateRefreshMinutes',
+      'ExchangeRateApiUrl',
     ]
     for (const key of editedKeys) {
       expect(defaultBillingSettings, key).toHaveProperty(key)

@@ -7483,6 +7483,19 @@
     "© 2025 Your Company. All rights reserved.": "© 2025 Your Company. All rights reserved.",
     "、": ", ",
     "，": ", ",
-    "，and ": ", and "
+    "，and ": ", and ",
+    "Payment Currency": "Payment Currency",
+    "Select payment currency": "Select payment currency",
+    "Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.": "Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.",
+    "Price follows the exchange rate": "Price follows the exchange rate",
+    "Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.": "Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.",
+    "Rate Refresh Interval (minutes)": "Rate Refresh Interval (minutes)",
+    "0 disables the job. Enabling it takes effect without a restart.": "0 disables the job. Enabling it takes effect without a restart.",
+    "Rate Endpoint": "Rate Endpoint",
+    "Must answer with a CNY rate, for example {\"rates\":{\"CNY\":7.2}}.": "Must answer with a CNY rate, for example {\"rates\":{\"CNY\":7.2}}.",
+    "Refresh now": "Refresh now",
+    "Rate updated to {{rate}}": "Rate updated to {{rate}}",
+    "Fetches the endpoint immediately and writes USDExchangeRate.": "Fetches the endpoint immediately and writes USDExchangeRate.",
+    "Exchange rate": "Exchange rate"
   }
 }

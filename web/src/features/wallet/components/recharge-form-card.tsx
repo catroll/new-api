@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils'
 
 import {
   formatCurrency,
+  formatPaymentAmount,
   getDiscountLabel,
   getPaymentIcon,
   getMinTopupAmount,
@@ -73,6 +74,7 @@ interface RechargeFormCardProps {
   loading?: boolean
   priceRatio?: number
   usdExchangeRate?: number
+  paymentCurrency?: string
   onOpenBilling?: () => void
   creemProducts?: CreemProduct[]
   enableCreemTopup?: boolean
@@ -103,6 +105,7 @@ export function RechargeFormCard({
   loading,
   priceRatio = 1,
   usdExchangeRate = 1,
+  paymentCurrency,
   onOpenBilling,
   creemProducts,
   enableCreemTopup,
@@ -316,7 +319,7 @@ export function RechargeFormCard({
                       <Skeleton className='h-5 w-16' />
                     ) : (
                       <span className='text-sm font-semibold'>
-                        {formatCurrency(paymentAmount)}
+                        {formatPaymentAmount(paymentAmount, paymentCurrency)}
                       </span>
                     )}
                   </div>

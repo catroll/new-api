@@ -280,6 +280,10 @@ export type BillingSettings = {
   'quota_setting.pre_consume_multiplier': number
   QuotaPerUnit: number
   USDExchangeRate: number
+  PaymentCurrency: string
+  PriceFollowsExchangeRate: boolean
+  ExchangeRateRefreshMinutes: number
+  ExchangeRateApiUrl: string
   'general_setting.quota_display_type': string
   'general_setting.custom_currency_symbol': string
   'general_setting.custom_currency_exchange_rate': number

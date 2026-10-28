@@ -154,6 +154,7 @@ export interface SystemStatus {
     quota_per_unit?: number
     quota_display_type?: string
     usd_exchange_rate?: number
+  payment_currency?: string
     custom_currency_symbol?: string
     custom_currency_exchange_rate?: number
     demo_site_enabled?: boolean
@@ -205,6 +206,7 @@ export interface SystemStatus {
   quota_per_unit?: number
   quota_display_type?: string
   usd_exchange_rate?: number
+  payment_currency?: string
   custom_currency_symbol?: string
   custom_currency_exchange_rate?: number
   demo_site_enabled?: boolean

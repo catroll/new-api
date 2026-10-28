@@ -44,6 +44,18 @@ export async function updateSystemOption(request: UpdateOptionRequest) {
   return res.data
 }
 
+// refreshExchangeRate asks the server to fetch the rate now instead of waiting for
+// the scheduled tick; it is the only way to tell a broken endpoint from a disabled
+// job.
+export async function refreshExchangeRate() {
+  const res = await api.post<{
+    success: boolean
+    message?: string
+    data?: { rate: number; price: number }
+  }>('/api/option/exchange_rate/refresh')
+  return res.data
+}
+
 export async function updatePasskeyDomains(
   request: UpdatePasskeyDomainsRequest
 ) {

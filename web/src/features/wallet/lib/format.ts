@@ -52,6 +52,20 @@ export function formatQuotaShort(quota: number): string {
  * Format currency amount that is already in local currency.
  * This is used for payment amounts that have been calculated via priceRatio.
  */
+/**
+ * formatPaymentAmount labels an amount with the currency the gateway charges.
+ * It is deliberately separate from the display currency: a USD-priced catalogue
+ * shows "$10 of credit" and charges "¥73", and both numbers appear on the same
+ * screen.
+ */
+export function formatPaymentAmount(
+  amount: number | string,
+  paymentCurrency?: string
+): string {
+  const formatted = formatCurrency(amount)
+  return paymentCurrency === 'CNY' ? `¥${formatted}` : formatted
+}
+
 export function formatCurrency(amount: number | string): string {
   const numeric =
     typeof amount === 'number' ? amount : Number.parseFloat(String(amount))

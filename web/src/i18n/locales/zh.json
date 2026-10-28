@@ -7483,6 +7483,19 @@
     "© 2025 Your Company. All rights reserved.": "© 2025 您的公司。保留所有权利。",
     "、": "、",
     "，": "，",
-    "，and ": "，并"
+    "，and ": "，并",
+    "Payment Currency": "支付货币",
+    "Select payment currency": "选择支付货币",
+    "Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.": "网关实际收取的货币。与展示货币无关：按美元定价的站点也可以用人民币收款。",
+    "Price follows the exchange rate": "充值价格跟随汇率",
+    "Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.": "每次刷新时同步更新 Price，使人民币收款跟随市场汇率。人民币原生站点（一个单位一元）请关闭。",
+    "Rate Refresh Interval (minutes)": "汇率刷新间隔（分钟）",
+    "0 disables the job. Enabling it takes effect without a restart.": "填 0 表示关闭。启用后无需重启即可生效。",
+    "Rate Endpoint": "汇率接口地址",
+    "Must answer with a CNY rate, for example {\"rates\":{\"CNY\":7.2}}.": "必须返回人民币汇率，例如 {\"rates\":{\"CNY\":7.2}}。",
+    "Refresh now": "立即刷新",
+    "Rate updated to {{rate}}": "汇率已更新为 {{rate}}",
+    "Fetches the endpoint immediately and writes USDExchangeRate.": "立即请求接口并写入展示汇率。",
+    "Exchange rate": "汇率"
   }
 }

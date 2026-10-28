@@ -33,7 +33,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatLocalCurrencyAmount } from '@/lib/currency'
 
 import { DEFAULT_DISCOUNT_RATE } from '../../constants'
-import { formatCurrency, getPaymentIcon } from '../../lib'
+import {
+  formatCurrency,
+  formatPaymentAmount,
+  getPaymentIcon,
+} from '../../lib'
 import type { PaymentMethod } from '../../types'
 
 interface PaymentConfirmDialogProps {
@@ -47,6 +51,8 @@ interface PaymentConfirmDialogProps {
   processing: boolean
   discountRate?: number
   usdExchangeRate?: number
+  paymentCurrency?: string
+  priceRatio?: number
 }
 
 export function PaymentConfirmDialog({
@@ -60,6 +66,8 @@ export function PaymentConfirmDialog({
   processing,
   discountRate = DEFAULT_DISCOUNT_RATE,
   usdExchangeRate = 1,
+  paymentCurrency,
+  priceRatio = 1,
 }: PaymentConfirmDialogProps) {
   const { t } = useTranslation()
   const hasDiscount = discountRate > 0 && discountRate < 1 && paymentAmount > 0
@@ -92,6 +100,17 @@ export function PaymentConfirmDialog({
             </span>
           </div>
 
+          {paymentCurrency === 'CNY' &&
+            priceRatio > 0 &&
+            Math.abs(priceRatio - usdExchangeRate) > 0.0001 && (
+              <div className='text-muted-foreground flex items-center justify-between text-xs'>
+                <span>{t('Exchange rate')}</span>
+                <span>
+                  1 USD = {formatCurrency(priceRatio)} {t('CNY')}
+                </span>
+              </div>
+            )}
+
           <div className='flex items-center justify-between'>
             <span className='text-muted-foreground text-sm'>
               {t('You Pay')}
@@ -101,7 +120,7 @@ export function PaymentConfirmDialog({
             ) : (
               <div className='flex items-baseline gap-2'>
                 <span className='text-2xl font-semibold'>
-                  {formatCurrency(paymentAmount)}
+                  {formatPaymentAmount(paymentAmount, paymentCurrency)}
                 </span>
                 {hasDiscount && (
                   <span className='text-muted-foreground text-sm line-through'>

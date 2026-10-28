@@ -17,9 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation } from '@tanstack/react-query'
+import { RefreshCw } from 'lucide-react'
 import type { Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import * as z from 'zod'
+
+import { Button } from '@/components/ui/button'
 
 import {
   Form,
@@ -51,6 +56,7 @@ import {
 } from '../components/settings-form-layout'
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
+import { refreshExchangeRate } from '../api'
 import { useSettingsForm } from '../hooks/use-settings-form'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
@@ -62,6 +68,13 @@ const createPricingSchema = (t: (key: string) => string) =>
       USDExchangeRate: z.coerce
         .number()
         .min(0.0001, t('Exchange rate must be greater than 0')),
+      PaymentCurrency: z.enum(['CNY', 'USD']),
+      PriceFollowsExchangeRate: z.boolean(),
+      ExchangeRateRefreshMinutes: z.coerce
+        .number()
+        .int()
+        .min(0, t('Value must be at least 0')),
+      ExchangeRateApiUrl: z.string().max(512),
       DisplayInCurrencyEnabled: z.boolean(),
       DisplayTokenStatEnabled: z.boolean(),
       general_setting: z.object({
@@ -135,6 +148,8 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
         }
       },
     })
+
+  const refreshRate = useMutation({ mutationFn: refreshExchangeRate })
 
   const displayType = form.watch('general_setting.quota_display_type') ?? 'USD'
   const displayInCurrencyEnabled = form.watch('DisplayInCurrencyEnabled')
@@ -259,6 +274,147 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                 )}
               />
             )}
+
+            <FormField
+              control={form.control}
+              name='PaymentCurrency'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Payment Currency')}</FormLabel>
+                  <Select
+                    items={[
+                      { value: 'CNY', label: t('CNY') },
+                      { value: 'USD', label: t('USD') },
+                    ]}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('Select payment currency')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        <SelectItem value='CNY'>{t('CNY')}</SelectItem>
+                        <SelectItem value='USD'>{t('USD')}</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t(
+                      'Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <SettingsSwitchItem>
+              <FormField
+                control={form.control}
+                name='PriceFollowsExchangeRate'
+                render={({ field }) => (
+                  <SettingsSwitchContent
+                    title={t('Price follows the exchange rate')}
+                    description={t(
+                      'Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.'
+                    )}
+                  >
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </SettingsSwitchContent>
+                )}
+              />
+            </SettingsSwitchItem>
+
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='ExchangeRateRefreshMinutes'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Rate Refresh Interval (minutes)')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        step='1'
+                        min='0'
+                        {...safeNumberFieldProps(field)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('0 disables the job. Enabling it takes effect without a restart.')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='ExchangeRateApiUrl'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Rate Endpoint')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='text'
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        ref={field.ref}
+                        placeholder='https://open.er-api.com/v6/latest/USD'
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('Must answer with a CNY rate, for example {"rates":{"CNY":7.2}}.')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className='flex flex-wrap items-center gap-3'>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                disabled={refreshRate.isPending}
+                onClick={() =>
+                  refreshRate.mutate(undefined, {
+                    onSuccess: (data) => {
+                      if (!data.success) {
+                        toast.error(data.message || t('Refresh failed'))
+                        return
+                      }
+                      toast.success(
+                        t('Rate updated to {{rate}}', {
+                          rate: data.data?.rate ?? '-',
+                        })
+                      )
+                    },
+                    onError: () => toast.error(t('Refresh failed')),
+                  })
+                }
+              >
+                <RefreshCw
+                  className={refreshRate.isPending ? 'animate-spin' : ''}
+                />
+                {t('Refresh now')}
+              </Button>
+              <span className='text-muted-foreground text-xs'>
+                {t(
+                  'Fetches the endpoint immediately and writes USDExchangeRate.'
+                )}
+              </span>
+            </div>
 
             {displayType === 'CUSTOM' && (
               <div className='grid gap-4 sm:grid-cols-2'>
