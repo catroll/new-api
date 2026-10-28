@@ -5351,7 +5351,6 @@
     "Saving permission changes requires security verification": "Saving permission changes requires security verification",
     "Saving...": "Saving...",
     "Scan QR Code": "Scan QR Code",
-    "Scan the QR code to add me as a friend.": "Scan the QR code to add me as a friend.",
     "Scan the QR code to follow the official account and reply with “验证码” to receive your verification code.": "Scan the QR code to follow the official account and send the message “验证码” to receive your verification code.",
     "Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, etc.)": "Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, etc.)",
     "Scenario Templates": "Scenario Templates",
@@ -7495,7 +7494,11 @@
     "Must answer with a CNY rate, for example {\"rates\":{\"CNY\":7.2}}.": "Must answer with a CNY rate, for example {\"rates\":{\"CNY\":7.2}}.",
     "Refresh now": "Refresh now",
     "Rate updated to {{rate}}": "Rate updated to {{rate}}",
-    "Fetches the endpoint immediately and writes USDExchangeRate.": "Fetches the endpoint immediately and writes USDExchangeRate.",
-    "Exchange rate": "Exchange rate"
+    "Exchange rate": "Exchange rate",
+    "Fetches the endpoint and writes this field.": "Fetches the endpoint and writes this field.",
+    "Save the endpoint first: a refresh uses the saved one.": "Save the endpoint first: a refresh uses the saved one.",
+    "Cross-border acquiring is not enabled yet, so Alipay refuses every order while this is USD.": "Cross-border acquiring is not enabled yet, so Alipay refuses every order while this is USD.",
+    "One unit of quota is shown as this many yuan. The rate job accepts 3.0-15.0.": "One unit of quota is shown as this many yuan. The rate job accepts 3.0-15.0.",
+    "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.": "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view."
   }
 }

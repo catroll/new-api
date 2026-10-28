@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import type { Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +25,6 @@ import { toast } from 'sonner'
 import * as z from 'zod'
 
 import { Button } from '@/components/ui/button'
-
 import {
   Form,
   FormControl,
@@ -47,6 +46,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { DEFAULT_CURRENCY_CONFIG } from '@/stores/system-config-store'
 
+import { refreshExchangeRate } from '../api'
 import { FormDirtyIndicator } from '../components/form-dirty-indicator'
 import { FormNavigationGuard } from '../components/form-navigation-guard'
 import {
@@ -56,7 +56,6 @@ import {
 } from '../components/settings-form-layout'
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
-import { refreshExchangeRate } from '../api'
 import { useSettingsForm } from '../hooks/use-settings-form'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
@@ -149,21 +148,50 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
       },
     })
 
-  const refreshRate = useMutation({ mutationFn: refreshExchangeRate })
+  const queryClient = useQueryClient()
+
+  // The refresh writes USDExchangeRate on the server, so the input that shows it
+  // has to move with it. Leaving the stale value in the form is not merely
+  // cosmetic: the field would stay dirty and the next save would write the old
+  // rate back over the fresh one.
+  const refreshRate = useMutation({
+    mutationFn: refreshExchangeRate,
+    onSuccess: (data) => {
+      if (!data.success) {
+        toast.error(data.message || t('Refresh failed'))
+        return
+      }
+      const rate = data.data?.rate
+      if (typeof rate === 'number') {
+        form.setValue('USDExchangeRate', rate, { shouldDirty: false })
+        // Everything outside this page reads the rate from /api/status.
+        queryClient.invalidateQueries({ queryKey: ['status'] })
+      }
+      toast.success(t('Rate updated to {{rate}}', { rate: rate ?? '-' }))
+    },
+    onError: () => toast.error(t('Refresh failed')),
+  })
+
+  // Refreshing uses the saved endpoint, so an unsaved address would silently
+  // fetch from the old one.
+  const endpointDirty = Boolean(form.formState.dirtyFields.ExchangeRateApiUrl)
 
   const displayType = form.watch('general_setting.quota_display_type') ?? 'USD'
-  const displayInCurrencyEnabled = form.watch('DisplayInCurrencyEnabled')
   const showTokensOnlyOption = displayType === 'TOKENS'
   const showQuotaPerUnit =
     displayType === 'TOKENS' ||
     defaultValues.QuotaPerUnit !== DEFAULT_CURRENCY_CONFIG.quotaPerUnit
-  const showDisplayInCurrencyOption = displayInCurrencyEnabled === false
+  // Hidden while it was true, which made the toggle a one-way door: this is the
+  // only place that edits DisplayInCurrencyEnabled.
+  const showDisplayInCurrencyOption = true
 
   return (
     <>
       <FormNavigationGuard when={isDirty} />
 
-      <SettingsSection title={t('Pricing & Display')}>
+      {/* The sidebar calls this page "Currency & Display"; the section title used
+          to say "Pricing & Display", so the same page had two names. */}
+      <SettingsSection title={t('Currency & Display')}>
         <Form {...form}>
           <SettingsForm onSubmit={handleSubmit}>
             <SettingsPageFormActions
@@ -253,9 +281,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                     <FormLabel>
                       {displayType === 'CNY'
                         ? t('CNY per USD')
-                        : displayType === 'USD'
-                          ? t('USD Exchange Rate')
-                          : t('USD Exchange Rate')}
+                        : t('USD Exchange Rate')}
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -265,9 +291,13 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      {t(
-                        'Real exchange rate between USD and your payment gateway currency'
-                      )}
+                      {displayType === 'CNY'
+                        ? t(
+                            'One unit of quota is shown as this many yuan. The rate job accepts 3.0-15.0.'
+                          )
+                        : t(
+                            'Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.'
+                          )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -275,71 +305,15 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
               />
             )}
 
-            <FormField
-              control={form.control}
-              name='PaymentCurrency'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('Payment Currency')}</FormLabel>
-                  <Select
-                    items={[
-                      { value: 'CNY', label: t('CNY') },
-                      { value: 'USD', label: t('USD') },
-                    ]}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('Select payment currency')} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent alignItemWithTrigger={false}>
-                      <SelectGroup>
-                        <SelectItem value='CNY'>{t('CNY')}</SelectItem>
-                        <SelectItem value='USD'>{t('USD')}</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    {t(
-                      'Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.'
-                    )}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <SettingsSwitchItem>
-              <FormField
-                control={form.control}
-                name='PriceFollowsExchangeRate'
-                render={({ field }) => (
-                  <SettingsSwitchContent
-                    title={t('Price follows the exchange rate')}
-                    description={t(
-                      'Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.'
-                    )}
-                  >
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </SettingsSwitchContent>
-                )}
-              />
-            </SettingsSwitchItem>
-
             <div className='grid gap-4 sm:grid-cols-2'>
               <FormField
                 control={form.control}
                 name='ExchangeRateRefreshMinutes'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Rate Refresh Interval (minutes)')}</FormLabel>
+                    <FormLabel>
+                      {t('Rate Refresh Interval (minutes)')}
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type='number'
@@ -349,7 +323,9 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      {t('0 disables the job. Enabling it takes effect without a restart.')}
+                      {t(
+                        '0 disables the job. Enabling it takes effect without a restart.'
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -373,7 +349,9 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      {t('Must answer with a CNY rate, for example {"rates":{"CNY":7.2}}.')}
+                      {t(
+                        'Must answer with a CNY rate, for example {"rates":{"CNY":7.2}}.'
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -381,28 +359,13 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
               />
             </div>
 
-            <div className='flex flex-wrap items-center gap-3'>
+            <div className='flex flex-wrap items-center gap-3 pt-1'>
               <Button
                 type='button'
                 variant='outline'
                 size='sm'
-                disabled={refreshRate.isPending}
-                onClick={() =>
-                  refreshRate.mutate(undefined, {
-                    onSuccess: (data) => {
-                      if (!data.success) {
-                        toast.error(data.message || t('Refresh failed'))
-                        return
-                      }
-                      toast.success(
-                        t('Rate updated to {{rate}}', {
-                          rate: data.data?.rate ?? '-',
-                        })
-                      )
-                    },
-                    onError: () => toast.error(t('Refresh failed')),
-                  })
-                }
+                disabled={refreshRate.isPending || endpointDirty}
+                onClick={() => refreshRate.mutate()}
               >
                 <RefreshCw
                   className={refreshRate.isPending ? 'animate-spin' : ''}
@@ -410,9 +373,9 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                 {t('Refresh now')}
               </Button>
               <span className='text-muted-foreground text-xs'>
-                {t(
-                  'Fetches the endpoint immediately and writes USDExchangeRate.'
-                )}
+                {endpointDirty
+                  ? t('Save the endpoint first: a refresh uses the saved one.')
+                  : t('Fetches the endpoint and writes this field.')}
               </span>
             </div>
 
@@ -513,6 +476,75 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                     <FormLabel>{t('Display Token Statistics')}</FormLabel>
                     <FormDescription>
                       {t('Show token usage statistics in the UI')}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='PaymentCurrency'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Payment Currency')}</FormLabel>
+                  <Select
+                    items={[
+                      { value: 'CNY', label: t('CNY') },
+                      { value: 'USD', label: t('USD') },
+                    ]}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={t('Select payment currency')}
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        <SelectItem value='CNY'>{t('CNY')}</SelectItem>
+                        <SelectItem value='USD'>{t('USD')}</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t(
+                      'Currency the gateways charge. Independent of the display currency: a dollar-priced catalogue can still collect CNY.'
+                    )}
+                  </FormDescription>
+                  {field.value === 'USD' && (
+                    <p className='text-xs text-amber-600 dark:text-amber-500'>
+                      {t(
+                        'Cross-border acquiring is not enabled yet, so Alipay refuses every order while this is USD.'
+                      )}
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='PriceFollowsExchangeRate'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>
+                      {t('Price follows the exchange rate')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Overwrite Price with each refresh, so the CNY charge tracks the market. Leave off on a CNY-native site, where one unit is one yuan.'
+                      )}
                     </FormDescription>
                   </SettingsSwitchContent>
                   <FormControl>
