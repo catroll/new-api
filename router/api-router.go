@@ -226,6 +226,7 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.PATCH("/request_policy", controller.UpdateRequestPolicy)
 			optionRoute.PUT("/", controller.UpdateOption)
 			optionRoute.PUT("/passkey/domains", controller.UpdatePasskeyDomains)
+			optionRoute.POST("/exchange_rate/refresh", controller.RefreshExchangeRate)
 			optionRoute.POST("/sms/test", middleware.CriticalRateLimit(), controller.SendTestSMS)
 			optionRoute.POST("/email/test", middleware.CriticalRateLimit(), controller.SendTestEmail)
 			optionRoute.GET("/model_pricing", controller.GetModelPricingConfig)

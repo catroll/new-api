@@ -13,7 +13,6 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-pay/gopay"
@@ -119,17 +118,21 @@ func getAlipayMinTopup() int64 {
 	return minTopUp
 }
 
-// requireCNYPricing refuses requests when the console quotes another currency.
-// Alipay charges CNY, while getPayMoney multiplies by Price in the display
-// currency: a hidden button is not enough, a direct API call must not create a
-// mispriced order either.
-func requireCNYPricing(c *gin.Context) bool {
-	if operation_setting.IsCNYDisplay() {
+// requireCNYPayment refuses requests when the site charges another currency.
+// Alipay (domestic) settles in CNY only and getPayMoney quotes Price in that
+// currency, so the check has to happen before the order is created: hiding the
+// button is not enough when the API can be called directly.
+//
+// The display currency is deliberately not part of this check. A dollar-priced
+// catalogue shown as "$10" can still be charged "¥73" — that is what Price is for —
+// which is exactly how a USD-denominated storefront collects renminbi.
+func requireCNYPayment(c *gin.Context) bool {
+	if setting.PaymentCurrency == "CNY" {
 		return true
 	}
-	logger.LogWarn(c.Request.Context(), common.LogText("Alipay request rejected reason=display_currency_is_not_cny path=%q user_id=%d",
-		c.Request.RequestURI, c.GetInt("id")))
-	paymentError(c, common.NewMessage("This gateway requires the console currency to be CNY"))
+	logger.LogWarn(c.Request.Context(), common.LogText("Alipay request rejected reason=payment_currency_is_not_cny path=%q user_id=%d currency=%q",
+		c.Request.RequestURI, c.GetInt("id"), setting.PaymentCurrency))
+	paymentError(c, common.NewMessage("This gateway can only charge CNY; set the payment currency to CNY"))
 	return false
 }
 
@@ -169,7 +172,7 @@ func RequestAlipayAmount(c *gin.Context) {
 		paymentError(c, common.NewMessage("Invalid parameters"))
 		return
 	}
-	if !requireCNYPricing(c) {
+	if !requireCNYPayment(c) {
 		return
 	}
 	if req.Amount < getAlipayMinTopup() {
@@ -204,7 +207,7 @@ func RequestAlipayPay(c *gin.Context) {
 		paymentError(c, common.NewMessage("Unsupported payment channel"))
 		return
 	}
-	if !requireCNYPricing(c) {
+	if !requireCNYPayment(c) {
 		return
 	}
 	if req.Amount < getAlipayMinTopup() {

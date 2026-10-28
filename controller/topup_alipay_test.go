@@ -100,6 +100,7 @@ func enableAlipayForTest(t *testing.T, keys alipayTestKeys) {
 	previousDisplay := operation_setting.GetGeneralSetting().QuotaDisplayType
 	previousPrice := operation_setting.Price
 	previousMin := operation_setting.MinTopUp
+	previousPaymentCurrency := setting.PaymentCurrency
 
 	confirmPaymentComplianceForTest(t)
 	setting.AlipayAppId = "2021000000000001"
@@ -118,6 +119,7 @@ func enableAlipayForTest(t *testing.T, keys alipayTestKeys) {
 		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplay
 		operation_setting.Price = previousPrice
 		operation_setting.MinTopUp = previousMin
+		setting.PaymentCurrency = previousPaymentCurrency
 		_ = previousCompliance
 	})
 }
@@ -212,10 +214,14 @@ func TestAlipayTopUpEnabledRequiresComplianceCNYAndCredentials(t *testing.T) {
 	confirmPaymentComplianceForTest(t)
 	require.True(t, isAlipayTopUpEnabled())
 
-	// Alipay settles in CNY; a USD-displayed site would quote the wrong currency.
+	// A dollar-priced catalogue still charges renminbi: the display currency must
+	// not disable the gateway, but a non-CNY payment currency must.
 	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
-	require.False(t, isAlipayTopUpEnabled())
+	require.True(t, isAlipayTopUpEnabled(), "USD display with a CNY charge is a supported configuration")
 	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeCNY
+	setting.PaymentCurrency = "USD"
+	require.False(t, isAlipayTopUpEnabled(), "only CNY can be charged today")
+	setting.PaymentCurrency = "CNY"
 
 	for _, empty := range []*string{&setting.AlipayAppId, &setting.AlipayPrivateKey, &setting.AlipayPublicKey} {
 		original := *empty
@@ -505,11 +511,11 @@ func TestRequestAlipayAmountEnforcesGatewayMinimum(t *testing.T) {
 
 // A USD-quoted console would charge CNY for a USD number; refuse it server-side
 // even though the wallet hides the button.
-func TestRequestAlipayPayRejectsNonCNYDisplay(t *testing.T) {
+func TestRequestAlipayPayRejectsNonCNYPayment(t *testing.T) {
 	keys := newAlipayTestKeys(t)
 	user := setupAlipayTestDB(t)
 	enableAlipayForTest(t, keys)
-	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	setting.PaymentCurrency = "USD"
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -531,4 +537,37 @@ func TestRequestAlipayPayRejectsNonCNYDisplay(t *testing.T) {
 	var count int64
 	require.NoError(t, model.DB.Model(&model.TopUp{}).Count(&count).Error)
 	assert.Zero(t, count, "a rejected request must not leave an order behind")
+}
+
+// TestRequestAlipayPayQuotesCNYForUSDDisplay is the hub platform's shape: the
+// catalogue and the wallet speak dollars, the buyer pays renminbi, and Price is
+// the exchange rate.
+func TestRequestAlipayPayQuotesCNYForUSDDisplay(t *testing.T) {
+	keys := newAlipayTestKeys(t)
+	user := setupAlipayTestDB(t)
+	enableAlipayForTest(t, keys)
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	operation_setting.Price = 7.3
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.POST("/api/user/alipay/pay", func(c *gin.Context) {
+		c.Set("id", user.Id)
+		RequestAlipayPay(c)
+	})
+
+	body, err := json.Marshal(AlipayPayRequest{Amount: 10, PaymentMethod: model.PaymentMethodAlipayDirect})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/user/alipay/pay", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "pay_url")
+
+	var stored model.TopUp
+	require.NoError(t, model.DB.Order("id desc").First(&stored).Error)
+	assert.Equal(t, int64(10), stored.Amount, "the order keeps the unit count")
+	assert.InDelta(t, 73.0, stored.Money, 0.001, "ten dollars of credit costs 73 yuan")
 }

@@ -18,7 +18,9 @@ func isAlipayTopUpEnabled() bool {
 	if !isPaymentComplianceConfirmed() {
 		return false
 	}
-	if !operation_setting.IsCNYDisplay() {
+	// The display currency is not part of this decision: a dollar-priced catalogue
+	// still charges renminbi through Price.
+	if setting.PaymentCurrency != "CNY" {
 		return false
 	}
 	return isAlipayWebhookConfigured()

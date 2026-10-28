@@ -102,6 +102,10 @@ func GetStatus(c *gin.Context) {
 
 		"usd_exchange_rate": operation_setting.USDExchangeRate,
 		"price":             operation_setting.Price,
+		// Payment currency, not display currency: the wallet labels the amount it
+		// is about to charge with this, while quota_display_type still decides how
+		// balances are shown.
+		"payment_currency": setting.PaymentCurrency,
 		"stripe_unit_price": setting.StripeUnitPrice,
 
 		// 面板启用开关

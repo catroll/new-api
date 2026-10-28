@@ -121,6 +121,9 @@ func main() {
 	// 数据看板
 	go model.UpdateQuotaData()
 
+	// 定时刷新美元对人民币汇率（间隔为 0 时暂停，控制台改完无需重启）
+	go service.StartExchangeRateJob()
+
 	if os.Getenv("CHANNEL_UPDATE_FREQUENCY") != "" {
 		frequency, err := strconv.Atoi(os.Getenv("CHANNEL_UPDATE_FREQUENCY"))
 		if err != nil {

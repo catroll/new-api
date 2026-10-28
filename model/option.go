@@ -106,6 +106,10 @@ func InitOptionMap() {
 	common.OptionMap["AlipayPublicKey"] = setting.AlipayPublicKey
 	common.OptionMap["AlipaySandbox"] = strconv.FormatBool(setting.AlipaySandbox)
 	common.OptionMap["AlipayMinTopUp"] = strconv.Itoa(setting.AlipayMinTopUp)
+	common.OptionMap["PaymentCurrency"] = setting.PaymentCurrency
+	common.OptionMap["PriceFollowsExchangeRate"] = strconv.FormatBool(setting.PriceFollowsExchangeRate)
+	common.OptionMap["ExchangeRateRefreshMinutes"] = strconv.Itoa(setting.ExchangeRateRefreshMinutes)
+	common.OptionMap["ExchangeRateApiUrl"] = setting.ExchangeRateApiUrl
 	common.OptionMap["CreemApiKey"] = setting.CreemApiKey
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
@@ -566,6 +570,14 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.AlipaySandbox = value == "true"
 	case "AlipayMinTopUp":
 		setting.AlipayMinTopUp, _ = strconv.Atoi(value)
+	case "PaymentCurrency":
+		setting.PaymentCurrency = value
+	case "PriceFollowsExchangeRate":
+		setting.PriceFollowsExchangeRate = value == "true"
+	case "ExchangeRateRefreshMinutes":
+		setting.ExchangeRateRefreshMinutes, _ = strconv.Atoi(value)
+	case "ExchangeRateApiUrl":
+		setting.ExchangeRateApiUrl = value
 	case "CreemApiKey":
 		setting.CreemApiKey = value
 	case "CreemProducts":
