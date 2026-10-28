@@ -7497,10 +7497,10 @@
     "Exchange rate": "汇率",
     "Fetches the endpoint and writes this field.": "立即请求接口，并把结果写入上面的汇率输入框。",
     "Save the endpoint first: a refresh uses the saved one.": "请先保存接口地址——刷新用的是已保存的地址。",
-    "Cross-border acquiring is not enabled yet, so Alipay refuses every order while this is USD.": "尚未开通跨境收款：支付货币选 USD 时支付宝会拒绝所有订单。",
     "One unit of quota is shown as this many yuan. The rate job accepts 3.0-15.0.": "一单位额度显示为多少元。定时任务只接受 3.0–15.0。",
     "Not used to convert prices in this display mode; it still feeds billing exports and the recharge-price view.": "当前展示模式不用它换算价格；它仍用于账单导出与「按充值价显示」。",
     "Last updated: {{time}}": "上次更新：{{time}}",
-    "Never updated": "尚未更新过"
+    "Never updated": "尚未更新过",
+    "Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable.": "尚未开通跨境收款：支付货币选 USD 会禁用支付宝，用户端显示「尚未启用在线充值」。"
   }
 }

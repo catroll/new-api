@@ -535,7 +535,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                   {field.value === 'USD' && (
                     <p className='text-xs text-amber-600 dark:text-amber-500'>
                       {t(
-                        'Cross-border acquiring is not enabled yet, so Alipay refuses every order while this is USD.'
+                        'Cross-border acquiring is not enabled yet, so Alipay is disabled and the wallet tells users that online top-up is unavailable.'
                       )}
                     </p>
                   )}
