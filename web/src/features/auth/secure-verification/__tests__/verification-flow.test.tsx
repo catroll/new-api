@@ -569,3 +569,70 @@ it('verifies with the clicked provider when several linked accounts are availabl
     screen.getByRole('button', { name: 'Continue with Linux DO' })
   ).toBeDisabled()
 })
+
+it('sends a step-up SMS code and submits it with the operation', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        scope: 'account.password.change',
+        methods: [{ method: 'sms', available: true }],
+        oauth_providers: [],
+        password_encryption_enabled: false,
+        phone_masked: '138****8000',
+        sms_resend_seconds: 30,
+      },
+    },
+  })
+  const proof: SecurityProof = {
+    proof_token: 'sms-proof',
+    method: 'sms',
+    scope: 'account.password.change',
+    expires_at: Math.floor(Date.now() / 1000) + 300,
+  }
+  const post = vi
+    .spyOn(api, 'post')
+    .mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: { phone_masked: '138****8000', resend_seconds: 30 },
+      },
+    })
+    .mockResolvedValueOnce({ data: { success: true, data: proof } })
+
+  const user = userEvent.setup()
+  const result = vi.fn()
+  render(
+    <Harness
+      onResult={result}
+      operation={{ scope: 'account.password.change' }}
+    />
+  )
+  await user.click(screen.getByText('Protected action'))
+  expect(
+    await screen.findByText(/We will text a 6-digit code to/)
+  ).toBeVisible()
+
+  await user.click(screen.getByRole('button', { name: 'Send code' }))
+  await waitFor(() =>
+    expect(post).toHaveBeenNthCalledWith(
+      1,
+      '/api/verify/sms',
+      { scope: 'account.password.change' },
+      expect.anything()
+    )
+  )
+  expect(
+    await screen.findByRole('button', { name: /Resend in/ })
+  ).toBeDisabled()
+
+  await user.type(screen.getByLabelText('Verification code'), '123456')
+  await user.click(screen.getByRole('button', { name: 'Verify' }))
+  await waitFor(() => expect(result).toHaveBeenCalledWith(proof))
+  expect(post).toHaveBeenNthCalledWith(
+    2,
+    '/api/verify',
+    { method: 'sms', scope: 'account.password.change', code: '123456' },
+    expect.anything()
+  )
+})

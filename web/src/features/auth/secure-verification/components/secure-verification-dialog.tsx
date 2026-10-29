@@ -16,8 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { KeyRound, Loader2, ShieldCheck } from 'lucide-react'
-import { useId } from 'react'
+import { KeyRound, Loader2, ShieldCheck, Smartphone } from 'lucide-react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
@@ -25,13 +25,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AuthOperationError } from '@/lib/secure-verification'
 
 import type { PasskeyDomains } from '../../passkey/assertion'
 import { PasskeyDomainSelector } from '../../passkey/components/passkey-domain-selector'
+import { sendVerificationSMS } from '../api'
 import type {
   SecureVerificationState,
   VerificationInput,
   VerificationMethod,
+  VerificationOperation,
 } from '../types'
 
 interface SecureVerificationDialogProps {
@@ -48,13 +51,38 @@ const methodLabels: Record<VerificationMethod, string> = {
   passkey: 'Passkey',
   password: 'Password',
   oauth: 'Linked account',
+  sms: 'SMS code',
   session: 'Login session',
+}
+
+interface SMSDeliveryState {
+  status: 'idle' | 'sending' | 'sent'
+  seconds: number
+  error?: string
 }
 
 export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
   const { t } = useTranslation()
   const inputId = useId()
   const state = props.state
+  const [sms, setSMS] = useState<SMSDeliveryState>({
+    status: 'idle',
+    seconds: 0,
+  })
+
+  useEffect(() => {
+    if (sms.seconds <= 0) return
+    const timer = setTimeout(
+      () =>
+        setSMS((current) => ({
+          ...current,
+          seconds: Math.max(0, current.seconds - 1),
+        })),
+      1000
+    )
+    return () => clearTimeout(timer)
+  }, [sms.seconds])
+
   if (state.phase === 'idle') return null
   const ready =
     state.phase === 'ready' || state.phase === 'verifying' ? state : null
@@ -70,14 +98,45 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
   if (input?.method === '2fa') {
     canVerify = canVerify && input.code.trim().length >= 6
   }
+  if (input?.method === 'sms') {
+    canVerify = canVerify && input.code.trim().length >= 6
+  }
   // Linked-account verification starts from the provider button itself.
   const showSubmit = state.phase !== 'error' && input?.method !== 'oauth'
   const error = 'error' in state ? state.error : undefined
   const formId = `${inputId}-form`
+  // Login never offers SMS, so a request that carries a login challenge has no
+  // operation to send a code for.
+  const smsOperation: VerificationOperation | null =
+    state.request.scope === 'auth.login' ? null : state.request
+  const smsPhone = ready?.requirements.phone_masked
+  const sendingSMS = sms.status === 'sending'
+  const smsCooldown = sms.seconds > 0
+
+  const sendCode = async () => {
+    if (!smsOperation || sendingSMS || smsCooldown) return
+    setSMS({ status: 'sending', seconds: 0 })
+    try {
+      const delivery = await sendVerificationSMS(smsOperation)
+      setSMS({
+        status: 'sent',
+        seconds: delivery.resend_seconds ?? 60,
+      })
+    } catch (failure) {
+      setSMS({
+        status: 'idle',
+        seconds: 0,
+        error: AuthOperationError.from(failure).message,
+      })
+    }
+  }
 
   const selectMethod = (method: string) => {
     switch (method) {
       case '2fa':
+        props.onInputChange({ method, code: '' })
+        break
+      case 'sms':
         props.onInputChange({ method, code: '' })
         break
       case 'password':
@@ -225,6 +284,55 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
                       )
                     : t('Enter the 6-digit authenticator code.')}
                 </p>
+              </TabsContent>
+              <TabsContent value='sms' className='space-y-3'>
+                <p className='text-muted-foreground flex items-center gap-2 text-sm'>
+                  <Smartphone className='size-5' />
+                  {smsPhone
+                    ? t('We will text a 6-digit code to {{phone}}.', {
+                        phone: smsPhone,
+                      })
+                    : t('We will text a 6-digit code to your bound phone.')}
+                </p>
+                <Button
+                  type='button'
+                  variant='outline'
+                  disabled={verifying || sendingSMS || smsCooldown}
+                  onClick={() => void sendCode()}
+                >
+                  {sendingSMS && <Loader2 className='size-4 animate-spin' />}
+                  {smsCooldown
+                    ? t('Resend in {{seconds}}s', { seconds: sms.seconds })
+                    : t('Send code')}
+                </Button>
+                {sms.error && (
+                  <p role='alert' className='text-destructive text-sm'>
+                    {t(sms.error)}
+                  </p>
+                )}
+                <div className='space-y-2'>
+                  <Label htmlFor={inputId}>{t('Verification code')}</Label>
+                  <Input
+                    id={inputId}
+                    autoComplete='one-time-code'
+                    inputMode='numeric'
+                    maxLength={6}
+                    autoFocus
+                    disabled={verifying}
+                    value={input.method === 'sms' ? input.code : ''}
+                    onChange={(event) =>
+                      props.onInputChange({
+                        method: 'sms',
+                        code: event.target.value,
+                      })
+                    }
+                  />
+                </div>
+                {sms.status === 'sent' && (
+                  <p className='text-muted-foreground text-sm'>
+                    {t('Verification code sent')}
+                  </p>
+                )}
               </TabsContent>
               <TabsContent value='passkey' className='space-y-3'>
                 <PasskeyDomainSelector

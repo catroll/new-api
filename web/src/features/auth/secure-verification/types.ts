@@ -23,6 +23,7 @@ export type VerificationMethod =
   | 'passkey'
   | 'password'
   | 'oauth'
+  | 'sms'
   | 'session'
 export type SecurityProofScope =
   | 'channel.key.read'
@@ -114,10 +115,21 @@ export interface VerificationRequirements {
   methods: { method: VerificationMethod; available: boolean; reason?: string }[]
   oauth_providers: { slug: string; name: string }[]
   password_encryption_enabled: boolean
+  /** Where an SMS step-up code is sent, already masked by the server. */
+  phone_masked?: string
+  /** Seconds the server requires between two SMS code requests. */
+  sms_resend_seconds?: number
+}
+
+/** Response to a step-up SMS request: the code never comes back to the client. */
+export interface VerificationSMSCode {
+  phone_masked: string
+  resend_seconds: number
 }
 
 export type VerificationInput =
   | { method: '2fa'; code: string }
+  | { method: 'sms'; code: string }
   | { method: 'password'; password: string }
   | { method: 'passkey'; rpID?: string }
   | { method: 'oauth'; provider: string }

@@ -68,6 +68,9 @@ function verificationReducer(
         case '2fa':
           input = { method: '2fa', code: '' }
           break
+        case 'sms':
+          input = { method: 'sms', code: '' }
+          break
         case 'password':
           input = { method: 'password', password: '' }
           break
@@ -105,6 +108,7 @@ function verificationReducer(
         input = { method: 'password', password: '' }
       }
       if (input?.method === '2fa') input = { method: '2fa', code: '' }
+      if (input?.method === 'sms') input = { method: 'sms', code: '' }
       return { ...state, phase: 'verifying', input, error: undefined }
     }
     case 'error':

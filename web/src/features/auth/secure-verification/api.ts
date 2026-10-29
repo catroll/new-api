@@ -47,6 +47,7 @@ import type {
   VerificationInput,
   VerificationOperation,
   VerificationRequirements,
+  VerificationSMSCode,
 } from './types'
 
 export async function checkVerificationMethods(
@@ -65,6 +66,26 @@ export async function checkVerificationMethods(
     isPasskeySupported(),
   ])
   return withDeviceAvailability(requirements, passkeySupported)
+}
+
+/**
+ * Asks the server to text a step-up code for one operation. The code is bound to
+ * that operation on the server, so it cannot be reused for another action.
+ */
+export async function sendVerificationSMS(
+  operation: VerificationOperation,
+  signal?: AbortSignal
+): Promise<VerificationSMSCode> {
+  return authResult<VerificationSMSCode>(
+    api.post(
+      '/api/verify/sms',
+      {
+        scope: operation.scope,
+        ...(operation.context ? { context: operation.context } : {}),
+      },
+      { ...authRequestOptions, signal }
+    )
+  )
 }
 
 function withDeviceAvailability(
@@ -226,6 +247,7 @@ export async function verify(
         )
         break
       case '2fa':
+      case 'sms':
         proof = await authResult<SecurityProof>(
           api.post(
             '/api/verify',
