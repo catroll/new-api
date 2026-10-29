@@ -271,7 +271,7 @@ func TestSecurityEnrollmentAccessTokenMethodPolicy(t *testing.T) {
 					case service.VerificationScopeAccessTokenRevoke:
 						input.Context = []byte(`{"token_id":1}`)
 					}
-					_, err := service.VerifySecurityInput(identity, input)
+					_, err := service.VerifySecurityInput(context.Background(), identity, input)
 					assert.ErrorIs(t, err, service.ErrProofMethod)
 				}
 			}
@@ -285,7 +285,7 @@ func TestSecurityEnrollmentAccessTokenLifecycleConsumesProofs(t *testing.T) {
 	createBody := `{"name":"ci","scopes":["profile:read"],"expires_at":0}`
 	var created []string
 	for range 2 {
-		proof, err := service.VerifySecurityInput(identity, service.VerificationInput{
+		proof, err := service.VerifySecurityInput(context.Background(), identity, service.VerificationInput{
 			Scope: service.VerificationScopeAccessTokenGenerate, Context: []byte(`{"scopes":["profile:read"],"expires_at":0}`), Method: "password", Password: "enrollment-password",
 		})
 		require.NoError(t, err)
@@ -826,7 +826,7 @@ func TestSecurityEnrollmentChannelProofRejectsMismatchesBeforeConsumption(t *tes
 	operation := service.VerificationOperation{Scope: service.VerificationScopeChannelKeyRead, Context: []byte(`{"channel_id":123}`)}
 	code, err := totp.GenerateCode(twoFA.Secret, time.Now())
 	require.NoError(t, err)
-	proof, err := service.VerifySecurityInput(identity, service.VerificationInput{Method: "2fa", Scope: operation.Scope, Context: operation.Context, Code: code})
+	proof, err := service.VerifySecurityInput(context.Background(), identity, service.VerificationInput{Method: "2fa", Scope: operation.Scope, Context: operation.Context, Code: code})
 	require.NoError(t, err)
 	for _, test := range []struct {
 		name      string
@@ -1385,12 +1385,12 @@ func TestSecurityEnrollmentEncryptedPasswordVerification(t *testing.T) {
 	require.NoError(t, err)
 	common.PasswordLoginEncryptionEnabled = true
 	input := service.VerificationInput{Method: "password", Scope: "passkey.register", PasswordEncrypted: base64.StdEncoding.EncodeToString(ciphertext), EncryptionKeyID: keyID}
-	proof, err := service.VerifySecurityInput(identity, input)
+	proof, err := service.VerifySecurityInput(context.Background(), identity, input)
 	require.NoError(t, err)
 	_, err = service.ConsumeOperationProof(proof.ProofToken, identity, service.VerificationOperation{Scope: input.Scope})
 	require.NoError(t, err)
 	input.EncryptionKeyID = "incorrect-key-id"
-	_, err = service.VerifySecurityInput(identity, input)
+	_, err = service.VerifySecurityInput(context.Background(), identity, input)
 	assert.ErrorIs(t, err, service.ErrVerificationFailed)
 }
 
@@ -1757,11 +1757,11 @@ func TestSecurityEnrollmentNeverTrustsSessionForFirstFactor(t *testing.T) {
 				require.NoError(t, err)
 			}
 			for _, scope := range []string{"2fa.setup", "passkey.register", "passkey.delete", "channel.key.read"} {
-				context := json.RawMessage(nil)
+				operationContext := json.RawMessage(nil)
 				if scope == "channel.key.read" {
-					context = json.RawMessage(`{"channel_id":1}`)
+					operationContext = json.RawMessage(`{"channel_id":1}`)
 				}
-				_, err := service.VerifySecurityInput(identity, service.VerificationInput{Method: "session", Scope: scope, Context: context})
+				_, err := service.VerifySecurityInput(context.Background(), identity, service.VerificationInput{Method: "session", Scope: scope, Context: operationContext})
 				assert.Error(t, err, scope)
 			}
 			if scenario == "binding storage failure" {
@@ -1838,7 +1838,7 @@ func TestSecurityEnrollmentRejectsChangedFirstFactorPolicy(t *testing.T) {
 					require.NoError(t, common.Unmarshal(body.Data, &proof))
 				} else {
 					require.NoError(t, model.DB.Model(user).Update("wechat_id", "wechat-user").Error)
-					proof, err = service.VerifySecurityInput(identity, service.VerificationInput{Scope: "2fa.setup", Method: "session"})
+					proof, err = service.VerifySecurityInput(context.Background(), identity, service.VerificationInput{Scope: "2fa.setup", Method: "session"})
 					require.Error(t, err)
 					assert.Nil(t, proof)
 					return

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
@@ -403,7 +404,7 @@ func TestTelegramOAuthConfigurationAndLegacyEndpoints(t *testing.T) {
 				require.Len(t, requirements.Methods, 1)
 				assert.False(t, requirements.Methods[0].Available)
 				assert.Contains(t, requirements.Methods[0].Reason, "administrator")
-				_, err = service.VerifySecurityInput(fixture.identity, service.VerificationInput{Scope: scope, Method: "session"})
+				_, err = service.VerifySecurityInput(context.Background(), fixture.identity, service.VerificationInput{Scope: scope, Method: "session"})
 				assert.Error(t, err)
 				_, err = service.StartOAuthVerification(fixture.identity, service.VerificationOperation{Scope: scope}, "telegram")
 				assert.Error(t, err)

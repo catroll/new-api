@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -127,7 +128,7 @@ func TestSecurityAccountDeletionAcceptsEitherFactorAndRevokesSessions(t *testing
 					input.Code, err = totp.GenerateCode("JBSWY3DPEHPK3PXP", time.Now())
 					require.NoError(t, err)
 				}
-				verified, err := service.VerifySecurityInput(identity, input)
+				verified, err := service.VerifySecurityInput(context.Background(), identity, input)
 				require.NoError(t, err)
 				proof = verified.ProofToken
 			}
@@ -581,7 +582,7 @@ func TestSecurityAccountEncryptedLongPasswordLogin(t *testing.T) {
 	require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
 	require.True(t, result.Success, response.Body.String())
 	assert.Contains(t, string(result.Data), `"has_password":true`)
-	proof, err := service.VerifySecurityInput(identity, service.VerificationInput{Method: "password", Scope: service.VerificationScopePasswordChange, PasswordEncrypted: encrypted, EncryptionKeyID: keyID})
+	proof, err := service.VerifySecurityInput(context.Background(), identity, service.VerificationInput{Method: "password", Scope: service.VerificationScopePasswordChange, PasswordEncrypted: encrypted, EncryptionKeyID: keyID})
 	require.NoError(t, err)
 	assert.NotEmpty(t, proof.ProofToken)
 	ciphertext[len(ciphertext)-1] ^= 1

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
@@ -35,6 +36,12 @@ func GetVerificationMethods(c *gin.Context) {
 // writeSecurityOperationError only exposes known, fixed business messages.
 // Unexpected errors retain their cause for the existing server-side auth logger.
 func writeSecurityOperationError(c *gin.Context, err error) {
+	// SMS failures have their own mapper: the codes and messages there describe
+	// a delivery problem, not a security decision.
+	if isSMSError(err) {
+		writeSMSError(c, err)
+		return
+	}
 	status := http.StatusOK
 	var code, message string
 	var protocolError *protocol.Error
@@ -165,11 +172,37 @@ func UniversalVerify(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
-	proof, err := service.VerifySecurityInput(identity, request)
+	proof, err := service.VerifySecurityInput(c.Request.Context(), identity, request)
 	if err != nil {
 		writeSecurityOperationError(c, err)
 		return
 	}
 	recordUserSecurityAudit(c, identity.UserID, "user.security_verify", map[string]any{"method": proof.Method, "scope": proof.Scope})
 	common.ApiSuccess(c, proof)
+}
+
+// SendVerificationSMS issues the step-up code for one sensitive operation. The
+// code is bound to that operation and to this account, so it cannot authorize
+// anything else, and it is only sent when SMS is actually offered as a method.
+func SendVerificationSMS(c *gin.Context) {
+	identity, ok := middleware.GetStepUpIdentity(c)
+	if !ok {
+		writeAccountStatusError(c, http.StatusUnauthorized, "The current sign-in method does not support security verification")
+		return
+	}
+	var request struct {
+		Scope   string          `json:"scope"`
+		Context json.RawMessage `json:"context,omitempty"`
+	}
+	if err := common.DecodeJson(c.Request.Body, &request); err != nil {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	phone, err := service.SendSecurityVerificationSMS(c.Request.Context(), identity, service.VerificationOperation{Scope: request.Scope, Context: request.Context})
+	if err != nil {
+		writeSecurityOperationError(c, err)
+		return
+	}
+	settings := system_setting.SMSSettingsSnapshot()
+	common.ApiSuccess(c, gin.H{"phone_masked": phone, "resend_seconds": settings.ResendSeconds})
 }

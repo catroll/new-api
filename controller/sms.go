@@ -267,6 +267,38 @@ func ResetPasswordBySMS(c *gin.Context) {
 	common.ApiSuccess(c, password)
 }
 
+// smsErrorSentinels lists every failure the SMS flow can return. Step-up
+// verification routes them to writeSMSError instead of the security mapper: they
+// describe delivery, not a security decision.
+var smsErrorSentinels = []error{
+	service.ErrSMSNotEnabled,
+	service.ErrPhoneNotAllowed,
+	model.ErrPhoneInvalid,
+	model.ErrPhoneAlreadyTaken,
+	model.ErrPhoneNotFound,
+	model.ErrPhoneAmbiguous,
+	service.ErrSMSSendTooSoon,
+	service.ErrSMSPhoneDailyLimit,
+	service.ErrSMSDailyQuota,
+	service.ErrSMSCodeInvalid,
+	service.ErrSMSCodeTooMany,
+	service.ErrSMSStoreUnavailable,
+	smsprovider.ErrInvalidPhone,
+	smsprovider.ErrThrottled,
+	smsprovider.ErrQuota,
+	smsprovider.ErrNotConfigured,
+	smsprovider.ErrProvider,
+}
+
+func isSMSError(err error) bool {
+	for _, sentinel := range smsErrorSentinels {
+		if errors.Is(err, sentinel) {
+			return true
+		}
+	}
+	return false
+}
+
 // writeSMSError maps the sentinels onto user-facing messages. Internal provider
 // details are logged, never returned.
 func writeSMSError(c *gin.Context, err error) {

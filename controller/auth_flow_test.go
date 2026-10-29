@@ -444,7 +444,7 @@ func TestSecurityLoginPasskeyCanManageTwoFAWithScopedProofs(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, model.DB.Create(&model.TwoFABackupCode{UserId: user.Id, CodeHash: hash}).Error)
 			if scope == service.VerificationScopeTwoFABackupCodes {
-				_, err := service.VerifySecurityInput(identity, service.VerificationInput{Scope: scope, Method: "2fa", Code: "ABCD-1234"})
+				_, err := service.VerifySecurityInput(context.Background(), identity, service.VerificationInput{Scope: scope, Method: "2fa", Code: "ABCD-1234"})
 				assert.ErrorIs(t, err, service.ErrVerificationFailed)
 				remaining, err := model.GetUnusedBackupCodeCount(user.Id)
 				require.NoError(t, err)

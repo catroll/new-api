@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/hmac"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,7 @@ const (
 	VerificationMethodPasskey            = "passkey"
 	VerificationMethodPassword           = "password"
 	VerificationMethodOAuth              = "oauth"
+	VerificationMethodSMS                = "sms"
 	VerificationMethodSession            = "session"
 	VerificationScopeChannelKeyRead      = "channel.key.read"
 	VerificationScopePasskeyRegister     = "passkey.register"
@@ -306,6 +308,15 @@ type VerificationRequirements struct {
 	Methods                   []VerificationMethodOption  `json:"methods"`
 	OAuthProviders            []VerificationOAuthProvider `json:"oauth_providers"`
 	PasswordEncryptionEnabled bool                        `json:"password_encryption_enabled"`
+	// PhoneMasked and SMSResendSeconds describe the SMS fallback: where the
+	// code goes and how long the console must wait before offering a resend.
+	PhoneMasked      string `json:"phone_masked,omitempty"`
+	SMSResendSeconds int    `json:"sms_resend_seconds,omitempty"`
+}
+
+// smsStepUpEnabled reports whether the installation can send step-up codes.
+func smsStepUpEnabled() bool {
+	return system_setting.SMSSettingsSnapshot().Enabled
 }
 
 // securityVerificationPolicy is the only operation-to-method policy. Device
@@ -342,9 +353,15 @@ func securityVerificationPolicy(scope string, state model.UserVerificationState)
 		}
 		if len(methods) == 0 {
 			if state.HasPassword {
-				methods = []string{VerificationMethodPassword}
+				methods = append(methods, VerificationMethodPassword)
 			} else {
-				methods = []string{VerificationMethodOAuth}
+				methods = append(methods, VerificationMethodOAuth)
+			}
+			// An SMS code is a fallback, never a replacement for an enrolled
+			// factor: an account with 2FA or a Passkey keeps those options only,
+			// so a SIM swap cannot downgrade a strong account.
+			if state.HasPhone && smsStepUpEnabled() {
+				methods = append(methods, VerificationMethodSMS)
 			}
 		}
 	default:
@@ -389,6 +406,18 @@ func GetVerificationRequirements(identity AuthIdentity, scope string) (*Verifica
 		return nil, err
 	}
 	requirements := &VerificationRequirements{Scope: scope, Methods: methods, OAuthProviders: []VerificationOAuthProvider{}, PasswordEncryptionEnabled: common.PasswordLoginEncryptionEnabled}
+	var user *model.User
+	loadUser := func() (*model.User, error) {
+		if user != nil {
+			return user, nil
+		}
+		loaded, err := model.GetUserById(identity.UserID, false)
+		if err != nil {
+			return nil, err
+		}
+		user = loaded
+		return user, nil
+	}
 	for i := range methods {
 		if methods[i].Method == VerificationMethodPassword && !common.PasswordLoginEnabled {
 			switch scope {
@@ -399,6 +428,23 @@ func GetVerificationRequirements(identity AuthIdentity, scope string) (*Verifica
 				methods[i].Available, methods[i].Reason = false, "Password authentication is disabled."
 			}
 		}
+		if methods[i].Method == VerificationMethodSMS {
+			settings := system_setting.SMSSettingsSnapshot()
+			if !settings.Enabled {
+				methods[i].Available, methods[i].Reason = false, "SMS verification is disabled."
+				continue
+			}
+			account, err := loadUser()
+			if err != nil {
+				return nil, err
+			}
+			if account.Phone == "" {
+				methods[i].Available, methods[i].Reason = false, "No phone number is bound to this account."
+				continue
+			}
+			requirements.PhoneMasked = common.MaskPhone(account.Phone)
+			requirements.SMSResendSeconds = settings.ResendSeconds
+		}
 		if methods[i].Method != VerificationMethodOAuth {
 			continue
 		}
@@ -408,17 +454,17 @@ func GetVerificationRequirements(identity AuthIdentity, scope string) (*Verifica
 			methods[i].Available, methods[i].Reason = false, "OAuth verification requires a browser sign-in. Enable two-factor authentication or a Passkey to continue."
 			continue
 		}
-		user, err := model.GetUserById(identity.UserID, false)
+		account, err := loadUser()
 		if err != nil {
 			return nil, err
 		}
-		requirements.OAuthProviders, err = verificationOAuthProviders(user)
+		requirements.OAuthProviders, err = verificationOAuthProviders(account)
 		if err != nil {
 			return nil, err
 		}
 		if len(requirements.OAuthProviders) == 0 {
 			methods[i].Available, methods[i].Reason = false, "No linked OAuth provider is available."
-			if user.TelegramId != "" {
+			if account.TelegramId != "" {
 				if err := oauth.TelegramConfigurationError(); err != nil {
 					methods[i].Reason = err.Error()
 				}
@@ -570,7 +616,7 @@ type VerificationInput struct {
 	EncryptionKeyID   string          `json:"encryption_key_id,omitempty"`
 }
 
-func VerifySecurityInput(identity AuthIdentity, input VerificationInput) (*SecurityProof, error) {
+func VerifySecurityInput(ctx context.Context, identity AuthIdentity, input VerificationInput) (*SecurityProof, error) {
 	binding, err := BindVerificationOperation(VerificationOperation{Scope: input.Scope, Context: input.Context})
 	if err != nil {
 		return nil, err
@@ -608,12 +654,69 @@ func VerifySecurityInput(identity AuthIdentity, input VerificationInput) (*Secur
 		if err := VerifyTwoFactorCode(twoFA, input.Code); err != nil {
 			return nil, err
 		}
+	case VerificationMethodSMS:
+		if err := consumeStepUpSMSCode(ctx, identity.UserID, binding, input.Code); err != nil {
+			return nil, err
+		}
 	case VerificationMethodPasskey, VerificationMethodOAuth:
 		return nil, ErrVerificationFlowRequired
 	default:
 		return nil, ErrProofMethod
 	}
 	return CompleteSecurityVerification(identity, binding, input.Method)
+}
+
+// SendSecurityVerificationSMS issues a step-up code to the account's bound
+// number. The code is bound to the exact operation (scope and normalized
+// context), so it cannot authorize anything else, and it is only sent when the
+// SMS method is actually offered for that operation.
+func SendSecurityVerificationSMS(ctx context.Context, identity AuthIdentity, operation VerificationOperation) (string, error) {
+	settings := system_setting.SMSSettingsSnapshot()
+	if !settings.Enabled {
+		return "", ErrSMSNotEnabled
+	}
+	if err := ValidateStepUpIdentity(identity); err != nil {
+		return "", err
+	}
+	binding, err := BindVerificationOperation(operation)
+	if err != nil {
+		return "", err
+	}
+	requirements, err := GetVerificationRequirements(identity, binding.Scope)
+	if err != nil {
+		return "", err
+	}
+	offered := false
+	for _, option := range requirements.Methods {
+		if option.Method == VerificationMethodSMS && option.Available {
+			offered = true
+			break
+		}
+	}
+	if !offered {
+		return "", ErrVerificationUnavailable
+	}
+	user, err := model.GetUserById(identity.UserID, false)
+	if err != nil {
+		return "", err
+	}
+	if user.Phone == "" {
+		return "", ErrVerificationUnavailable
+	}
+	if _, err := SendSMSCode(ctx, SMSCodePurposeVerify, SMSCodeScopeForVerification(identity.UserID, binding), user.Phone, settings); err != nil {
+		return "", err
+	}
+	return common.MaskPhone(user.Phone), nil
+}
+
+// consumeStepUpSMSCode redeems the code that SendSecurityVerificationSMS bound
+// to this account and operation.
+func consumeStepUpSMSCode(ctx context.Context, userID int, binding VerificationBinding, code string) error {
+	settings := system_setting.SMSSettingsSnapshot()
+	if !settings.Enabled {
+		return ErrSMSNotEnabled
+	}
+	return VerifySMSCode(ctx, SMSCodePurposeVerify, SMSCodeScopeForVerification(userID, binding), code, settings.MaxAttempts)
 }
 
 // VerifyTwoFactorCode classifies the input before verification so one failed

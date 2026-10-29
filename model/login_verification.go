@@ -18,6 +18,9 @@ type UserVerificationState struct {
 	HasTwoFA    bool
 	TwoFALocked bool
 	HasPasskey  bool
+	// HasPhone reports a bound number. Only the bind flow writes that column, so
+	// a non-empty value is proof that the number belongs to the account.
+	HasPhone bool
 }
 
 func GetUserVerificationState(userID int) (*UserVerificationState, error) {
@@ -31,6 +34,7 @@ func getUserVerificationState(tx *gorm.DB, userID int, forUpdate bool) (*UserVer
 	var state UserVerificationState
 	query := tx.Model(&User{}).Select(
 		"id AS user_id, status, role, auth_version, CASE WHEN password <> '' THEN 1 ELSE 0 END AS has_password, "+
+			"CASE WHEN phone <> '' THEN 1 ELSE 0 END AS has_phone, "+
 			"EXISTS (?) AS has_two_fa, EXISTS (?) AS two_fa_locked, EXISTS (?) AS has_passkey",
 		tx.Model(&TwoFA{}).Select("1").Where("user_id = ? AND is_enabled = ?", userID, true),
 		tx.Model(&TwoFA{}).Select("1").Where("user_id = ? AND is_enabled = ? AND locked_until > ?", userID, true, time.Now()),

@@ -21,6 +21,9 @@ const (
 	SMSCodePurposeRegister = "register"
 	SMSCodePurposeBind     = "bind"
 	SMSCodePurposeReset    = "reset"
+	// SMSCodePurposeVerify is a step-up code: it authorizes one sensitive action
+	// for the signed-in account and never creates a session.
+	SMSCodePurposeVerify = "verify"
 
 	smsKeyPrefix        = "sms"
 	smsAttemptsTTL      = 10 * time.Minute
@@ -187,6 +190,13 @@ func smsGlobalDailyKey() string {
 // issued for account A cannot be redeemed by account B.
 func SMSCodeScopeForBind(userID int, phone string) string {
 	return fmt.Sprintf("user:%d:%s", userID, phone)
+}
+
+// SMSCodeScopeForVerification binds a step-up code to one account, one action
+// and one normalized context, so a code issued for one operation cannot be
+// redeemed for another one (or by another account).
+func SMSCodeScopeForVerification(userID int, binding VerificationBinding) string {
+	return fmt.Sprintf("user:%d:%s:%s", userID, binding.Scope, binding.ContextHash)
 }
 
 // IssueSMSCode generates a numeric code, stores it for the given TTL and resets
