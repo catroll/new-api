@@ -322,6 +322,25 @@ func TestAdminUserBindingProofDistinguishesBuiltInAndCustomBindings(t *testing.T
 	assert.JSONEq(t, "7", string(providerID))
 }
 
+func TestAdminClearUserBindingReleasesPhone(t *testing.T) {
+	_, identity, target := setupAdminUserTest(t)
+	require.NoError(t, model.DB.Model(&model.User{}).Where("id = ?", target.Id).Update("phone", "+8613800138000").Error)
+
+	operation := service.VerificationOperation{
+		Scope:   service.VerificationScopeAdminUserBindingClear,
+		Context: []byte(fmt.Sprintf(`{"user_id":%d,"binding_type":"phone"}`, target.Id)),
+	}
+	proof := issueSecurityEnrollmentProof(t, identity, operation, service.VerificationMethodPassword)
+	params := gin.Params{{Key: "id", Value: fmt.Sprint(target.Id)}, {Key: "binding_type", Value: "phone"}}
+	response := adminUserRequest(http.MethodDelete, "/api/user/:id/bindings/:binding_type", "", proof, identity, common.RoleRootUser, params, AdminClearUserBinding)
+	result := decodeSecurityEnrollmentResponse(t, response)
+	require.True(t, result.Success, response.Body.String())
+
+	stored, err := model.GetUserById(target.Id, false)
+	require.NoError(t, err)
+	assert.Empty(t, stored.Phone, "clearing the phone binding must empty the column")
+}
+
 func TestAdminUserVerificationPolicy(t *testing.T) {
 	t.Run("requires an administrator", func(t *testing.T) {
 		_, identity := setupSecurityEnrollmentTest(t)
