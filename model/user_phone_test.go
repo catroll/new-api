@@ -116,3 +116,25 @@ func TestGetUniqueUserByPhoneReportsMissingNumber(t *testing.T) {
 		t.Fatalf("GetUniqueUserByPhone() = %v, want ErrPhoneNotFound", err)
 	}
 }
+
+// The admin binding management dialog clears a phone exactly like the other
+// bindings, so the column must be released and the number must become
+// claimable by another account afterwards.
+func TestClearBindingReleasesPhone(t *testing.T) {
+	setupPhoneTestDB(t)
+	owner := newPhoneTestUser(t, "phone-clear-owner")
+	other := newPhoneTestUser(t, "phone-clear-other")
+	require.NoError(t, BindUserPhone(owner.Id, "+8613800138000"))
+
+	require.NoError(t, owner.ClearBinding("phone"))
+	require.Empty(t, owner.Phone)
+
+	available, err := IsPhoneAvailable("+8613800138000", 0)
+	require.NoError(t, err)
+	require.True(t, available, "clearing the binding must release the number")
+
+	require.NoError(t, BindUserPhone(other.Id, "+8613800138000"))
+	resolved, err := GetUniqueUserByPhone("+8613800138000")
+	require.NoError(t, err)
+	require.Equal(t, other.Id, resolved.Id)
+}

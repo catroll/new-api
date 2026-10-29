@@ -919,6 +919,7 @@ func (user *User) ClearBinding(bindingType string) error {
 
 	bindingColumnMap := map[string]string{
 		"email":    "email",
+		"phone":    "phone",
 		"github":   "github_id",
 		"discord":  "discord_id",
 		"oidc":     "oidc_id",

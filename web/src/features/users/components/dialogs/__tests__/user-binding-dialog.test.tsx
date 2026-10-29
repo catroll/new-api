@@ -107,6 +107,7 @@ const user = {
   id: 7,
   username: 'bound-user',
   email: 'user@example.com',
+  phone: '+8613800138000',
   github_id: 'github-user',
   discord_id: 'discord-user',
   wechat_id: 'wechat-user',
@@ -183,6 +184,7 @@ describe('UserBindingDialog built-in bindings', () => {
                 oidc_enabled: true,
                 telegram_oauth: true,
                 linuxdo_oauth: true,
+                sms_enabled: true,
               },
             },
           }
@@ -214,6 +216,7 @@ describe('UserBindingDialog built-in bindings', () => {
     )
 
     const expectedBindings = [
+      ['Phone number', 'phone'],
       ['Email', 'email'],
       ['GitHub', 'github'],
       ['Discord', 'discord'],

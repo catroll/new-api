@@ -27,6 +27,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  Smartphone,
 } from 'lucide-react'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -85,6 +86,7 @@ interface StatusInfo {
   wechat_login?: boolean
   telegram_oauth?: boolean
   linuxdo_oauth?: boolean
+  sms_enabled?: boolean
   custom_oauth_providers?: Array<{
     id: number
     name: string
@@ -99,6 +101,13 @@ const BUILTIN_BINDINGS: ReadonlyArray<{
   icon: React.ReactNode
   statusKey: keyof StatusInfo | null
 }> = [
+  {
+    key: 'phone',
+    field: 'phone',
+    label: 'Phone number',
+    icon: <Smartphone className='h-4 w-4' />,
+    statusKey: 'sms_enabled',
+  },
   {
     key: 'email',
     field: 'email',
