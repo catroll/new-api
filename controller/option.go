@@ -590,6 +590,12 @@ func applySMSOptionValue(settings *system_setting.SMSSettings, field, value stri
 			return common.NewMessage("SMS daily quota must be a number")
 		}
 		settings.DailyQuota = parsed
+	case "register_daily_quota":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS registration daily quota must be a number")
+		}
+		settings.RegisterDailyQuota = parsed
 	}
 	return nil
 }

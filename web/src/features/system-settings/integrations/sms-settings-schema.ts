@@ -45,6 +45,7 @@ export const smsConfigurationSchema = z.object({
   phone_daily_limit: z.number().int().positive(),
   ip_hourly_limit: z.number().int().positive(),
   daily_quota: z.number().int().positive(),
+  register_daily_quota: z.number().int().positive(),
 })
 
 export type SmsConfiguration = z.infer<typeof smsConfigurationSchema>
@@ -72,6 +73,7 @@ export const smsEditableFields = [
   'phone_daily_limit',
   'ip_hourly_limit',
   'daily_quota',
+  'register_daily_quota',
 ] as const satisfies readonly SmsSettingField[]
 
 export function smsOptionKey(field: SmsSettingField) {

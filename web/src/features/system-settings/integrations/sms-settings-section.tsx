@@ -741,6 +741,31 @@ export function SmsSettingsSection({ defaultValues }: SmsSettingsSectionProps) {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name='sms.register_daily_quota'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Daily registration codes')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                      disabled={isSaving}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Registration codes the whole site may send per day'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           <div

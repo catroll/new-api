@@ -70,6 +70,11 @@ func SendSMSCode(ctx context.Context, purpose, scope, phone string, settings sys
 	if err := TakeSMSPhoneDailyBudget(ctx, phone, settings.PhoneDailyLimit); err != nil {
 		return "", err
 	}
+	if purpose == SMSCodePurposeRegister {
+		if err := TakeSMSRegisterDailyBudget(ctx, settings.RegisterDailyQuota); err != nil {
+			return "", err
+		}
+	}
 	if err := TakeSMSGlobalDailyBudget(ctx, settings.DailyQuota); err != nil {
 		return "", err
 	}

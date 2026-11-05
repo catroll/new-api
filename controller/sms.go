@@ -292,6 +292,7 @@ var smsErrorSentinels = []error{
 	service.ErrSMSSendTooSoon,
 	service.ErrSMSPhoneDailyLimit,
 	service.ErrSMSDailyQuota,
+	service.ErrSMSRegisterDailyLimit,
 	service.ErrSMSCodeInvalid,
 	service.ErrSMSCodeTooMany,
 	service.ErrSMSStoreUnavailable,
@@ -331,6 +332,9 @@ func writeSMSError(c *gin.Context, err error) {
 		common.ApiErrorT(c, "Daily SMS limit for this number reached")
 	case errors.Is(err, service.ErrSMSDailyQuota):
 		common.ApiErrorT(c, "Daily SMS quota reached")
+	case errors.Is(err, service.ErrSMSRegisterDailyLimit):
+		logger.LogWarn(c.Request.Context(), common.LogText("sms registration daily quota exhausted"))
+		common.ApiErrorT(c, "Daily registration SMS quota reached")
 	case errors.Is(err, service.ErrSMSCodeInvalid):
 		common.ApiErrorT(c, "Verification code is incorrect or has expired")
 	case errors.Is(err, service.ErrSMSCodeTooMany):

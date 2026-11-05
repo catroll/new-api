@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 )
 
 func smsTestScope(t *testing.T, purpose string) (string, string) {
@@ -105,5 +108,49 @@ func TestSMSGlobalDailyBudget(t *testing.T) {
 	ctx := context.Background()
 	if err := TakeSMSGlobalDailyBudget(ctx, 1_000_000); err != nil {
 		t.Fatalf("huge quota = %v, want nil", err)
+	}
+}
+
+func TestSMSRegisterDailyBudget(t *testing.T) {
+	ctx := context.Background()
+	store := smsCodeStoreForUse()
+	if err := store.Del(ctx, smsRegisterDailyKey()); err != nil {
+		t.Fatalf("reset register budget = %v", err)
+	}
+
+	for send := 1; send <= 2; send++ {
+		if err := TakeSMSRegisterDailyBudget(ctx, 2); err != nil {
+			t.Fatalf("send %d = %v, want nil", send, err)
+		}
+	}
+	if err := TakeSMSRegisterDailyBudget(ctx, 2); !errors.Is(err, ErrSMSRegisterDailyLimit) {
+		t.Fatalf("third send = %v, want ErrSMSRegisterDailyLimit", err)
+	}
+}
+
+// A registration send must consume the registration-only counter; otherwise the
+// separate quota would exist in the settings but never protect anything.
+func TestSendSMSCodeConsumesRegisterDailyBudget(t *testing.T) {
+	ctx := context.Background()
+	store := smsCodeStoreForUse()
+	if err := store.Del(ctx, smsRegisterDailyKey()); err != nil {
+		t.Fatalf("reset register budget = %v", err)
+	}
+
+	previousDebug := common.DebugEnabled
+	common.DebugEnabled = true
+	t.Cleanup(func() { common.DebugEnabled = previousDebug })
+
+	settings := system_setting.SMSSettings{
+		Enabled:            true,
+		Provider:           system_setting.SMSProviderConsole,
+		RegisterDailyQuota: 10,
+	}
+	phone := fmt.Sprintf("+8613801%05d", time.Now().UnixNano()%100000)
+	if _, err := SendSMSCode(ctx, SMSCodePurposeRegister, phone, phone, settings); err != nil {
+		t.Fatalf("SendSMSCode() error = %v", err)
+	}
+	if err := TakeSMSRegisterDailyBudget(ctx, 1); !errors.Is(err, ErrSMSRegisterDailyLimit) {
+		t.Fatalf("register counter = %v, want ErrSMSRegisterDailyLimit after one send", err)
 	}
 }

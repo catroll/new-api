@@ -32,12 +32,13 @@ const (
 )
 
 var (
-	ErrSMSCodeInvalid      = errors.New("Verification code is incorrect or has expired")
-	ErrSMSCodeTooMany      = errors.New("Too many verification attempts, request a new code")
-	ErrSMSSendTooSoon      = errors.New("Please wait before requesting another verification code")
-	ErrSMSPhoneDailyLimit  = errors.New("Daily SMS limit for this number reached")
-	ErrSMSDailyQuota       = errors.New("Daily SMS quota reached")
-	ErrSMSStoreUnavailable = errors.New("SMS verification is temporarily unavailable")
+	ErrSMSCodeInvalid        = errors.New("Verification code is incorrect or has expired")
+	ErrSMSCodeTooMany        = errors.New("Too many verification attempts, request a new code")
+	ErrSMSSendTooSoon        = errors.New("Please wait before requesting another verification code")
+	ErrSMSPhoneDailyLimit    = errors.New("Daily SMS limit for this number reached")
+	ErrSMSDailyQuota         = errors.New("Daily SMS quota reached")
+	ErrSMSRegisterDailyLimit = errors.New("Daily registration SMS quota reached")
+	ErrSMSStoreUnavailable   = errors.New("SMS verification is temporarily unavailable")
 )
 
 // smsCodeStore is the small slice of key/value behaviour the code flow needs.
@@ -186,6 +187,10 @@ func smsGlobalDailyKey() string {
 	return fmt.Sprintf("%s:day:%s", smsKeyPrefix, time.Now().Format("20060102"))
 }
 
+func smsRegisterDailyKey() string {
+	return fmt.Sprintf("%s:register:day:%s", smsKeyPrefix, time.Now().Format("20060102"))
+}
+
 // SMSCodeScopeForBind binds a code to one account and one number, so a code
 // issued for account A cannot be redeemed by account B.
 func SMSCodeScopeForBind(userID int, phone string) string {
@@ -296,6 +301,25 @@ func TakeSMSGlobalDailyBudget(ctx context.Context, limit int) error {
 	}
 	if int(count) > limit {
 		return ErrSMSDailyQuota
+	}
+	return nil
+}
+
+// TakeSMSRegisterDailyBudget counts one registration send against the
+// registration-only allowance. Registration codes are the only purpose that
+// can be requested for a number the caller does not control, so they get a
+// separate, smaller cap than login and reset.
+func TakeSMSRegisterDailyBudget(ctx context.Context, limit int) error {
+	if limit <= 0 {
+		return nil
+	}
+	store := smsCodeStoreForUse()
+	count, err := store.Incr(ctx, smsRegisterDailyKey(), smsDailyTTL())
+	if err != nil {
+		return ErrSMSStoreUnavailable
+	}
+	if int(count) > limit {
+		return ErrSMSRegisterDailyLimit
 	}
 	return nil
 }
