@@ -47,6 +47,7 @@ const botProtectionSchema = z.object({
   TurnstileCheckEnabled: z.boolean(),
   TurnstileSiteKey: z.string().optional(),
   TurnstileSecretKey: z.string().optional(),
+  CaptchaEnabled: z.boolean(),
 })
 
 type BotProtectionFormValues = z.infer<typeof botProtectionSchema>
@@ -75,14 +76,13 @@ export function BotProtectionSection({
       ([key, value]) =>
         value !== defaultValues[key as keyof BotProtectionFormValues]
     )
-    const turnstileEnableUpdate = updates.find(
-      ([key, value]) => key === 'TurnstileCheckEnabled' && value === true
+    const enableUpdate = updates.find(
+      ([key, value]) =>
+        (key === 'TurnstileCheckEnabled' || key === 'CaptchaEnabled') &&
+        value === true
     )
-    const orderedUpdates = turnstileEnableUpdate
-      ? [
-          ...updates.filter(([key]) => key !== 'TurnstileCheckEnabled'),
-          turnstileEnableUpdate,
-        ]
+    const orderedUpdates = enableUpdate
+      ? [...updates.filter(([key]) => key !== enableUpdate[0]), enableUpdate]
       : updates
 
     for (const [key, value] of orderedUpdates) {
@@ -98,6 +98,29 @@ export function BotProtectionSection({
             onSave={form.handleSubmit(onSubmit)}
             isSaving={updateOption.isPending}
           />
+          <FormField
+            control={form.control}
+            name='CaptchaEnabled'
+            render={({ field }) => (
+              <SettingsSwitchItem>
+                <SettingsSwitchContent>
+                  <FormLabel>{t('Enable self-hosted CAPTCHA')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Protect login, registration, and verification codes with a self-hosted image challenge'
+                    )}
+                  </FormDescription>
+                </SettingsSwitchContent>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </SettingsSwitchItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name='TurnstileCheckEnabled'

@@ -41,6 +41,7 @@ const defaults = {
   TurnstileCheckEnabled: false,
   TurnstileSiteKey: '',
   TurnstileSecretKey: '',
+  CaptchaEnabled: false,
 }
 
 let testI18n: i18n

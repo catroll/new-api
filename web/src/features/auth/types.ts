@@ -28,6 +28,7 @@ export interface LoginPayload {
   username: string
   password: string
   turnstile?: string
+  captcha?: string
   passwordEncryptionEnabled?: boolean
 }
 
@@ -45,6 +46,7 @@ export interface RegisterPayload {
   phone_code?: string
   aff_code?: string
   turnstile?: string
+  captcha?: string
 }
 
 export interface LoginSmsPayload {
@@ -59,6 +61,7 @@ export interface SmsCodePayload {
   phone: string
   purpose?: SmsCodePurpose
   turnstile?: string
+  captcha?: string
 }
 
 export interface PhoneBindPayload {
@@ -74,11 +77,13 @@ export interface SmsPasswordResetPayload {
 export interface PasswordResetPayload {
   email: string
   turnstile?: string
+  captcha?: string
 }
 
 export interface EmailVerificationPayload {
   email: string
   turnstile?: string
+  captcha?: string
 }
 
 export interface BindEmailPayload {
@@ -143,6 +148,7 @@ export interface SystemStatus {
     WeChatAccountQRCodeImageURL?: string
     turnstile_check?: boolean
     turnstile_site_key?: string
+    captcha_check?: boolean
     email_verification?: boolean
     sms_enabled?: boolean
     sms_login_enabled?: boolean
@@ -154,7 +160,7 @@ export interface SystemStatus {
     quota_per_unit?: number
     quota_display_type?: string
     usd_exchange_rate?: number
-  payment_currency?: string
+    payment_currency?: string
     custom_currency_symbol?: string
     custom_currency_exchange_rate?: number
     demo_site_enabled?: boolean
@@ -195,6 +201,7 @@ export interface SystemStatus {
   WeChatAccountQRCodeImageURL?: string
   turnstile_check?: boolean
   turnstile_site_key?: string
+  captcha_check?: boolean
   email_verification?: boolean
   sms_enabled?: boolean
   sms_login_enabled?: boolean

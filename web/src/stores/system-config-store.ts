@@ -44,6 +44,7 @@ export interface SystemConfig {
   footerHtml?: string
   demoSiteEnabled?: boolean
   displayTokenStatEnabled?: boolean
+  captchaCheck: boolean
   currency: CurrencyConfig
 }
 
@@ -75,6 +76,7 @@ export const useSystemConfigStore = create<SystemConfigState>()(
       config: {
         systemName: DEFAULT_SYSTEM_NAME,
         logo: DEFAULT_LOGO,
+        captchaCheck: false,
         currency: { ...DEFAULT_CURRENCY_CONFIG },
       },
       loading: true,

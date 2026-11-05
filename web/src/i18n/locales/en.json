@@ -7542,6 +7542,17 @@
     "Keep the price in sync with the exchange rate": "Keep the price in sync with the exchange rate",
     "Every refresh writes Price as well as the rate, so a dollar-priced catalogue charges the current renminbi amount. Leave off when the price is a fixed unit price, such as 1 yuan per unit.": "Every refresh writes Price as well as the rate, so a dollar-priced catalogue charges the current renminbi amount. Leave off when the price is a fixed unit price, such as 1 yuan per unit.",
     "Updated by the exchange-rate job; turn the switch below off to edit it by hand.": "Updated by the exchange-rate job; turn the switch below off to edit it by hand.",
-    "Charged per US dollar of balance, for every gateway including Alipay and Epay.": "Charged per US dollar of balance, for every gateway including Alipay and Epay."
+    "Charged per US dollar of balance, for every gateway including Alipay and Epay.": "Charged per US dollar of balance, for every gateway including Alipay and Epay.",
+    "Failed to load the human check": "Failed to load the human check",
+    "Please complete the human verification first": "Please complete the human verification first",
+    "Human verification image": "Human verification image",
+    "Challenge unavailable": "Challenge unavailable",
+    "Refresh challenge": "Refresh challenge",
+    "Enter the characters in the image": "Enter the characters in the image",
+    "Human verification": "Human verification",
+    "Enable self-hosted CAPTCHA": "Enable self-hosted CAPTCHA",
+    "Protect login, registration, and verification codes with a self-hosted image challenge": "Protect login, registration, and verification codes with a self-hosted image challenge",
+    "Human verification failed, please refresh and try again": "Human verification failed, please refresh and try again",
+    "Self-hosted CAPTCHA": "Self-hosted CAPTCHA"
   }
 }

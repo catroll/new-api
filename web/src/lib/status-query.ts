@@ -99,6 +99,7 @@ export function mapStatusDataToConfig(
     displayTokenStatEnabled: data.display_token_stat_enabled as
       | boolean
       | undefined,
+    captchaCheck: data.captcha_check === true,
     currency,
   }
 }

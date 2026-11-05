@@ -47,6 +47,20 @@ import type {
 } from './types'
 
 // ============================================================================
+// Human verification
+// ============================================================================
+
+export interface CaptchaChallenge {
+  id: string
+  image: string
+}
+
+export async function getCaptcha(): Promise<ApiResponse<CaptchaChallenge>> {
+  const res = await api.get('/api/captcha', { skipErrorHandler: true })
+  return res.data
+}
+
+// ============================================================================
 // Authentication APIs
 // ============================================================================
 
@@ -70,13 +84,17 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
     } else {
       passwordFields = { password: payload.password }
     }
+    const captcha = payload.captcha ?? ''
     const res = await api.post<LoginResponse>(
       `/api/user/login?turnstile=${turnstile}`,
       {
         username: payload.username,
         ...passwordFields,
       },
-      { skipAuthRefresh: true }
+      {
+        skipAuthRefresh: true,
+        headers: captcha ? { 'X-Captcha': captcha } : undefined,
+      }
     )
     if (payload.passwordEncryptionEnabled && !res.data?.success) {
       clearPasswordEncryptionCache()
@@ -171,10 +189,12 @@ export async function logout(): Promise<ApiResponse> {
 // Send password reset email
 export async function sendPasswordResetEmail(
   email: string,
-  turnstile?: string
+  turnstile?: string,
+  captcha?: string
 ): Promise<ApiResponse> {
   const res = await api.get('/api/reset_password', {
     params: { email, turnstile },
+    headers: captcha ? { 'X-Captcha': captcha } : undefined,
   })
   return res.data
 }
@@ -183,10 +203,12 @@ export async function sendPasswordResetEmail(
 // numbers on purpose.
 export async function sendPasswordResetSms(
   phone: string,
-  turnstile?: string
+  turnstile?: string,
+  captcha?: string
 ): Promise<ApiResponse> {
   const res = await api.get('/api/reset_password/sms', {
     params: { phone, turnstile },
+    headers: captcha ? { 'X-Captcha': captcha } : undefined,
   })
   return res.data
 }
@@ -289,8 +311,10 @@ export async function telegramLogin(
 
 // User registration
 export async function register(payload: RegisterPayload): Promise<ApiResponse> {
+  const captcha = payload.captcha ?? ''
   const res = await api.post(`/api/user/register`, payload, {
     params: { turnstile: payload.turnstile ?? '' },
+    headers: captcha ? { 'X-Captcha': captcha } : undefined,
   })
   return res.data
 }
@@ -298,10 +322,12 @@ export async function register(payload: RegisterPayload): Promise<ApiResponse> {
 // Send email verification code
 export async function sendEmailVerification(
   email: string,
-  turnstile?: string
+  turnstile?: string,
+  captcha?: string
 ): Promise<ApiResponse> {
   const res = await api.get('/api/verification', {
     params: { email, turnstile },
+    headers: captcha ? { 'X-Captcha': captcha } : undefined,
   })
   return res.data
 }
@@ -310,19 +336,30 @@ export async function sendEmailVerification(
 export async function sendSmsCode(
   payload: SmsCodePayload
 ): Promise<ApiResponse> {
+  const captcha = payload.captcha ?? ''
   const res = await api.get('/api/verification/sms', {
     params: {
       phone: payload.phone,
       purpose: payload.purpose ?? 'login',
       turnstile: payload.turnstile,
     },
+    headers: captcha ? { 'X-Captcha': captcha } : undefined,
   })
   return res.data
 }
 
 // Send a code to the number an authenticated account wants to bind.
-export async function sendBindPhoneCode(phone: string): Promise<ApiResponse> {
-  const res = await api.post('/api/user/phone/bind/code', { phone })
+export async function sendBindPhoneCode(
+  phone: string,
+  captcha?: string
+): Promise<ApiResponse> {
+  const res = await api.post(
+    '/api/user/phone/bind/code',
+    { phone },
+    {
+      headers: captcha ? { 'X-Captcha': captcha } : undefined,
+    }
+  )
   return res.data
 }
 
