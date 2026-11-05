@@ -5040,6 +5040,7 @@
     "Request ID": "请求 ID",
     "Request Limits": "请求限制",
     "Request Model": "请求模型",
+    "Request origin is not allowed": "不允许的请求来源",
     "Request Model Name": "请求模型名称",
     "Request Model:": "请求模型：",
     "Request Path": "请求路径",

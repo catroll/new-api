@@ -43,10 +43,10 @@ func SetApiRouter(router *gin.Engine) {
 			perfMetricsRoute.GET("", controller.GetPerfMetrics)
 		}
 		apiRouter.GET("/rankings", middleware.HeaderNavModuleAuth("rankings"), controller.GetRankings)
-		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
-		apiRouter.GET("/verification/sms", middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), controller.SendSMSVerification)
-		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
-		apiRouter.GET("/reset_password/sms", middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetSMS)
+		apiRouter.GET("/verification", middleware.SendEndpointOriginGuard(), middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
+		apiRouter.GET("/verification/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), controller.SendSMSVerification)
+		apiRouter.GET("/reset_password", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
+		apiRouter.GET("/reset_password/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetSMS)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPassword)
 		apiRouter.POST("/user/reset/sms", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPasswordBySMS)
 		// OAuth routes - specific routes must come before :provider wildcard
