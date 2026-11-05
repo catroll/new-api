@@ -50,6 +50,7 @@ type smsCodeStore interface {
 	Get(ctx context.Context, key string) (string, bool, error)
 	Del(ctx context.Context, key string) error
 	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
+	Decr(ctx context.Context, key string, ttl time.Duration) (int64, error)
 	SetNX(ctx context.Context, key, value string, ttl time.Duration) (bool, error)
 }
 
@@ -80,6 +81,24 @@ func (redisSMSCodeStore) Incr(ctx context.Context, key string, ttl time.Duration
 	pipe.Expire(ctx, key, ttl)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return 0, err
+	}
+	return count.Val(), nil
+}
+
+// Decr gives back one unit of a budget. It never leaves a negative counter
+// behind: a missing or already-zero key stays at zero.
+func (redisSMSCodeStore) Decr(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	pipe := common.RDB.TxPipeline()
+	count := pipe.Decr(ctx, key)
+	pipe.Expire(ctx, key, ttl)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return 0, err
+	}
+	if count.Val() < 0 {
+		if err := common.RDB.Set(ctx, key, "0", ttl).Err(); err != nil {
+			return 0, err
+		}
+		return 0, nil
 	}
 	return count.Val(), nil
 }
@@ -142,6 +161,26 @@ func (m *memorySMSCodeStore) Incr(_ context.Context, key string, ttl time.Durati
 	var current int64
 	_, _ = fmt.Sscanf(entry.value, "%d", &current)
 	current++
+	entry.value = fmt.Sprintf("%d", current)
+	m.values[key] = entry
+	return current, nil
+}
+
+func (m *memorySMSCodeStore) Decr(_ context.Context, key string, ttl time.Duration) (int64, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	if m.values == nil {
+		m.values = make(map[string]memorySMSEntry)
+	}
+	entry, ok := m.values[key]
+	if !ok || time.Now().After(entry.expiresAt) {
+		entry = memorySMSEntry{value: "0", expiresAt: time.Now().Add(ttl)}
+	}
+	var current int64
+	_, _ = fmt.Sscanf(entry.value, "%d", &current)
+	if current > 0 {
+		current--
+	}
 	entry.value = fmt.Sprintf("%d", current)
 	m.values[key] = entry
 	return current, nil
@@ -278,6 +317,13 @@ func TakeSMSCooldown(ctx context.Context, purpose, scope string, cooldown time.D
 	return allowed, nil
 }
 
+// ReleaseSMSCooldown gives the slot back after a send failed before reaching the
+// provider, so the user does not have to wait out a cooldown for a code that was
+// never sent.
+func ReleaseSMSCooldown(ctx context.Context, purpose, scope string) error {
+	return smsCodeStoreForUse().Del(ctx, smsCooldownKey(purpose, scope))
+}
+
 // TakeSMSPhoneDailyBudget counts one send against the number's daily allowance.
 func TakeSMSPhoneDailyBudget(ctx context.Context, phone string, limit int) error {
 	if limit <= 0 {
@@ -347,6 +393,34 @@ func TakeSMSRegisterIPHourlyBudget(ctx context.Context, ip string, limit int) er
 		return ErrSMSRegisterIPLimit
 	}
 	return nil
+}
+
+// The refund helpers undo a budget reservation when no code reached the
+// provider. They are best-effort: a failed refund is logged by the caller and
+// must not turn a failed send into a different error.
+func RefundSMSPhoneDailyBudget(ctx context.Context, phone string) error {
+	return refundSMSCounter(ctx, smsPhoneDailyKey(phone), smsDailyTTL())
+}
+
+func RefundSMSGlobalDailyBudget(ctx context.Context) error {
+	return refundSMSCounter(ctx, smsGlobalDailyKey(), smsDailyTTL())
+}
+
+func RefundSMSRegisterDailyBudget(ctx context.Context) error {
+	return refundSMSCounter(ctx, smsRegisterDailyKey(), smsDailyTTL())
+}
+
+func RefundSMSRegisterIPHourlyBudget(ctx context.Context, ip string) error {
+	ip = strings.TrimSpace(ip)
+	if ip == "" {
+		return nil
+	}
+	return refundSMSCounter(ctx, smsRegisterIPHourlyKey(ip), smsHourlyTTL)
+}
+
+func refundSMSCounter(ctx context.Context, key string, ttl time.Duration) error {
+	_, err := smsCodeStoreForUse().Decr(ctx, key, ttl)
+	return err
 }
 
 func smsDailyTTL() time.Duration {

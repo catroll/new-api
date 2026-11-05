@@ -176,3 +176,153 @@ func TestSendSMSCodeConsumesRegisterDailyBudget(t *testing.T) {
 		t.Fatalf("register counter = %v, want ErrSMSRegisterDailyLimit after one send", err)
 	}
 }
+
+func TestSMSBudgetRefunds(t *testing.T) {
+	ctx := context.Background()
+	store := smsCodeStoreForUse()
+	phone := fmt.Sprintf("+8613802%05d", time.Now().UnixNano()%100000)
+
+	if err := store.Del(ctx, smsPhoneDailyKey(phone)); err != nil {
+		t.Fatalf("reset phone budget = %v", err)
+	}
+	if err := TakeSMSPhoneDailyBudget(ctx, phone, 1); err != nil {
+		t.Fatalf("phone take = %v", err)
+	}
+	if err := RefundSMSPhoneDailyBudget(ctx, phone); err != nil {
+		t.Fatalf("phone refund = %v", err)
+	}
+	if err := TakeSMSPhoneDailyBudget(ctx, phone, 1); err != nil {
+		t.Fatalf("phone take after refund = %v, want nil", err)
+	}
+
+	if err := store.Del(ctx, smsRegisterDailyKey()); err != nil {
+		t.Fatalf("reset register budget = %v", err)
+	}
+	if err := TakeSMSRegisterDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("register take = %v", err)
+	}
+	if err := RefundSMSRegisterDailyBudget(ctx); err != nil {
+		t.Fatalf("register refund = %v", err)
+	}
+	if err := TakeSMSRegisterDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("register take after refund = %v, want nil", err)
+	}
+
+	if err := store.Del(ctx, smsGlobalDailyKey()); err != nil {
+		t.Fatalf("reset global budget = %v", err)
+	}
+	if err := TakeSMSGlobalDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("global take = %v", err)
+	}
+	if err := RefundSMSGlobalDailyBudget(ctx); err != nil {
+		t.Fatalf("global refund = %v", err)
+	}
+	if err := TakeSMSGlobalDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("global take after refund = %v, want nil", err)
+	}
+
+	ip := fmt.Sprintf("198.51.100.%d", time.Now().UnixNano()%200+1)
+	if err := store.Del(ctx, smsRegisterIPHourlyKey(ip)); err != nil {
+		t.Fatalf("reset IP budget = %v", err)
+	}
+	if err := TakeSMSRegisterIPHourlyBudget(ctx, ip, 1); err != nil {
+		t.Fatalf("IP take = %v", err)
+	}
+	if err := RefundSMSRegisterIPHourlyBudget(ctx, ip); err != nil {
+		t.Fatalf("IP refund = %v", err)
+	}
+	if err := TakeSMSRegisterIPHourlyBudget(ctx, ip, 1); err != nil {
+		t.Fatalf("IP take after refund = %v, want nil", err)
+	}
+}
+
+// A provider failure must not silently spend the phone, registration or global
+// budget, and it must not leave the number in a cooldown for a code that was
+// never delivered.
+func TestSendSMSCodeRefundsOnProviderFailure(t *testing.T) {
+	ctx := context.Background()
+	store := smsCodeStoreForUse()
+	if err := store.Del(ctx, smsGlobalDailyKey()); err != nil {
+		t.Fatalf("reset global budget = %v", err)
+	}
+	if err := store.Del(ctx, smsRegisterDailyKey()); err != nil {
+		t.Fatalf("reset register budget = %v", err)
+	}
+
+	previousDebug := common.DebugEnabled
+	common.DebugEnabled = false
+	t.Cleanup(func() { common.DebugEnabled = previousDebug })
+
+	settings := system_setting.SMSSettings{
+		Enabled:            true,
+		Provider:           system_setting.SMSProviderConsole,
+		PhoneDailyLimit:    1,
+		RegisterDailyQuota: 1,
+		DailyQuota:         1,
+		ResendSeconds:      60,
+	}
+	phone := fmt.Sprintf("+8613803%05d", time.Now().UnixNano()%100000)
+	if _, err := SendSMSCode(ctx, SMSCodePurposeRegister, phone, phone, settings); err == nil {
+		t.Fatal("SendSMSCode() error = nil, want provider failure")
+	}
+
+	if err := TakeSMSPhoneDailyBudget(ctx, phone, 1); err != nil {
+		t.Fatalf("phone budget was not refunded: %v", err)
+	}
+	if err := TakeSMSRegisterDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("register budget was not refunded: %v", err)
+	}
+	if err := TakeSMSGlobalDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("global budget was not refunded: %v", err)
+	}
+	allowed, err := TakeSMSCooldown(ctx, SMSCodePurposeRegister, phone, time.Minute)
+	if err != nil {
+		t.Fatalf("cooldown take = %v", err)
+	}
+	if !allowed {
+		t.Fatal("cooldown was not released after a failed send")
+	}
+}
+
+// The global quota check runs after the phone and registration counters. When it
+// rejects, those two must be rolled back so a later legitimate attempt is not
+// penalized for a code that was never sent.
+func TestSendSMSCodeRefundsWhenGlobalQuotaRejects(t *testing.T) {
+	ctx := context.Background()
+	store := smsCodeStoreForUse()
+	if err := store.Del(ctx, smsGlobalDailyKey()); err != nil {
+		t.Fatalf("reset global budget = %v", err)
+	}
+	if err := store.Del(ctx, smsRegisterDailyKey()); err != nil {
+		t.Fatalf("reset register budget = %v", err)
+	}
+	if err := TakeSMSGlobalDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("pre-consume global = %v", err)
+	}
+
+	settings := system_setting.SMSSettings{
+		Enabled:            true,
+		Provider:           system_setting.SMSProviderConsole,
+		PhoneDailyLimit:    1,
+		RegisterDailyQuota: 1,
+		DailyQuota:         1,
+	}
+	phone := fmt.Sprintf("+8613804%05d", time.Now().UnixNano()%100000)
+	if _, err := SendSMSCode(ctx, SMSCodePurposeRegister, phone, phone, settings); !errors.Is(err, ErrSMSDailyQuota) {
+		t.Fatalf("SendSMSCode() error = %v, want ErrSMSDailyQuota", err)
+	}
+
+	if err := TakeSMSPhoneDailyBudget(ctx, phone, 1); err != nil {
+		t.Fatalf("phone budget was not refunded after global rejection: %v", err)
+	}
+	if err := TakeSMSRegisterDailyBudget(ctx, 1); err != nil {
+		t.Fatalf("register budget was not refunded after global rejection: %v", err)
+	}
+	allowed, err := TakeSMSCooldown(ctx, SMSCodePurposeRegister, phone, time.Minute)
+	if err != nil {
+		t.Fatalf("cooldown take = %v", err)
+	}
+	if !allowed {
+		t.Fatal("cooldown was not released after global rejection")
+	}
+}

@@ -84,6 +84,11 @@ func SendSMSVerification(c *gin.Context) {
 	}
 
 	if _, err := service.SendSMSCode(c.Request.Context(), purpose, phone, phone, settings); err != nil {
+		if purpose == service.SMSCodePurposeRegister {
+			if refundErr := service.RefundSMSRegisterIPHourlyBudget(c.Request.Context(), c.ClientIP()); refundErr != nil {
+				logger.LogWarn(c.Request.Context(), common.LogText("sms register IP budget refund failed ip=%s: %v", c.ClientIP(), refundErr))
+			}
+		}
 		writeSMSError(c, err)
 		return
 	}

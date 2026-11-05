@@ -67,30 +67,64 @@ func SendSMSCode(ctx context.Context, purpose, scope, phone string, settings sys
 	if !allowed {
 		return "", ErrSMSSendTooSoon
 	}
+	releaseCooldown := func() {
+		if err := ReleaseSMSCooldown(ctx, purpose, scope); err != nil {
+			logger.LogWarn(ctx, common.LogText("sms cooldown release failed purpose=%s scope=%s: %v", purpose, scope, err))
+		}
+	}
 	if err := TakeSMSPhoneDailyBudget(ctx, phone, settings.PhoneDailyLimit); err != nil {
+		releaseCooldown()
 		return "", err
+	}
+	phoneCounted := settings.PhoneDailyLimit > 0
+	registerCounted := false
+	globalCounted := false
+	refundBudgets := func() {
+		if phoneCounted {
+			if err := RefundSMSPhoneDailyBudget(ctx, phone); err != nil {
+				logger.LogWarn(ctx, common.LogText("sms phone budget refund failed phone=%s: %v", common.MaskPhone(phone), err))
+			}
+		}
+		if registerCounted {
+			if err := RefundSMSRegisterDailyBudget(ctx); err != nil {
+				logger.LogWarn(ctx, common.LogText("sms register budget refund failed: %v", err))
+			}
+		}
+		if globalCounted {
+			if err := RefundSMSGlobalDailyBudget(ctx); err != nil {
+				logger.LogWarn(ctx, common.LogText("sms global budget refund failed: %v", err))
+			}
+		}
+		releaseCooldown()
 	}
 	if purpose == SMSCodePurposeRegister {
 		if err := TakeSMSRegisterDailyBudget(ctx, settings.RegisterDailyQuota); err != nil {
+			refundBudgets()
 			return "", err
 		}
+		registerCounted = settings.RegisterDailyQuota > 0
 	}
 	if err := TakeSMSGlobalDailyBudget(ctx, settings.DailyQuota); err != nil {
+		refundBudgets()
 		return "", err
 	}
+	globalCounted = settings.DailyQuota > 0
 
 	code, err := IssueSMSCode(ctx, purpose, scope, time.Duration(settings.CodeTTLSeconds)*time.Second)
 	if err != nil {
+		refundBudgets()
 		return "", err
 	}
 
 	provider, err := smsprovider.New(smsprovider.ConfigFromSettings(settings))
 	if err != nil {
+		refundBudgets()
 		return "", err
 	}
 	result, err := provider.SendCode(ctx, smsprovider.Message{Phone: phone, Code: code})
 	if err != nil {
 		logger.LogWarn(ctx, common.LogText("sms send failed purpose=%s phone=%s provider=%s: %v", purpose, common.MaskPhone(phone), provider.Name(), err))
+		refundBudgets()
 		return "", err
 	}
 	logger.LogInfo(ctx, common.LogText("sms sent purpose=%s phone=%s provider=%s status=%d sms_ids=%v", purpose, common.MaskPhone(phone), provider.Name(), result.StatusCode, result.SMSIDs))
