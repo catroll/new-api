@@ -18,9 +18,11 @@ func TestSMSSettingsDefaults(t *testing.T) {
 		{"code ttl", settings.CodeTTLSeconds, 300},
 		{"resend cooldown", settings.ResendSeconds, 60},
 		{"max attempts", settings.MaxAttempts, 5},
-		{"phone daily limit", settings.PhoneDailyLimit, 10},
+		{"phone daily limit", settings.PhoneDailyLimit, 5},
 		{"ip hourly limit", settings.IPHourlyLimit, 10},
 		{"daily quota", settings.DailyQuota, 3000},
+		{"register daily quota", settings.RegisterDailyQuota, 200},
+		{"register ip hourly limit", settings.RegisterIPHourlyLimit, 5},
 	}
 	for _, tc := range cases {
 		if tc.got != tc.want {
@@ -51,15 +53,17 @@ func TestSMSSettingsDefaults(t *testing.T) {
 func TestSMSOptionDefaultsAreExported(t *testing.T) {
 	exported := config.GlobalConfig.ExportAllConfigs()
 	wants := map[string]string{
-		"sms.api":               SMSAPISendCode,
-		"sms.provider":          SMSProviderSendCloud,
-		"sms.code_ttl_seconds":  "300",
-		"sms.resend_seconds":    "60",
-		"sms.max_attempts":      "5",
-		"sms.phone_daily_limit": "10",
-		"sms.ip_hourly_limit":   "10",
-		"sms.daily_quota":       "3000",
-		"sms.msg_type":          "0",
+		"sms.api":                      SMSAPISendCode,
+		"sms.provider":                 SMSProviderSendCloud,
+		"sms.code_ttl_seconds":         "300",
+		"sms.resend_seconds":           "60",
+		"sms.max_attempts":             "5",
+		"sms.phone_daily_limit":        "5",
+		"sms.ip_hourly_limit":          "10",
+		"sms.daily_quota":              "3000",
+		"sms.register_daily_quota":     "200",
+		"sms.register_ip_hourly_limit": "5",
+		"sms.msg_type":                 "0",
 	}
 	for key, want := range wants {
 		if got := exported[key]; got != want {

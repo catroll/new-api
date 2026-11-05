@@ -110,7 +110,7 @@ func (s SMSSettings) WithDefaults() SMSSettings {
 		s.MaxAttempts = 5
 	}
 	if s.PhoneDailyLimit <= 0 {
-		s.PhoneDailyLimit = 10
+		s.PhoneDailyLimit = 5
 	}
 	if s.IPHourlyLimit <= 0 {
 		s.IPHourlyLimit = 10
