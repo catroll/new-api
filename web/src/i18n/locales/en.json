@@ -5299,6 +5299,7 @@
     "SMS provider": "SMS provider",
     "SMS provider must be sendcloud or console": "SMS provider must be sendcloud or console",
     "SMS quota exhausted": "SMS quota exhausted",
+    "SMS registration verification is not enabled": "SMS registration verification is not enabled",
     "SMS require phone must be true or false": "SMS require phone must be true or false",
     "SMS resend interval must be a number": "SMS resend interval must be a number",
     "SMS sent too frequently to this number, try again later": "SMS sent too frequently to this number, try again later",

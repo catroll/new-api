@@ -60,6 +60,18 @@ func SendSMSVerification(c *gin.Context) {
 			return
 		}
 	case service.SMSCodePurposeRegister:
+		// Registration codes are only useful to the password registration flow,
+		// and only while the phone policy is on. Without this gate the endpoint
+		// happily sends paid codes to arbitrary numbers even when registration is
+		// closed or a phone is optional, which turns it into an open SMS relay.
+		if !common.RegisterEnabled {
+			common.ApiErrorT(c, "New user registration has been disabled by administrator")
+			return
+		}
+		if !common.PasswordRegisterEnabled || !settings.RequirePhone {
+			common.ApiErrorT(c, "SMS registration verification is not enabled")
+			return
+		}
 		if err := model.EnsurePhoneAvailable(phone, 0); err != nil {
 			writeSMSError(c, err)
 			return

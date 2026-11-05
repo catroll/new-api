@@ -5299,6 +5299,7 @@
     "SMS provider": "短信服务商",
     "SMS provider must be sendcloud or console": "短信供应商只能是 sendcloud 或 console",
     "SMS quota exhausted": "短信额度已用尽",
+    "SMS registration verification is not enabled": "未开启注册短信验证",
     "SMS require phone must be true or false": "手机号必填开关只能是 true 或 false",
     "SMS resend interval must be a number": "重发间隔必须是数字",
     "SMS sent too frequently to this number, try again later": "该号码发送过于频繁，请稍后再试",
