@@ -297,11 +297,14 @@ export async function getCheckinStatus(
  * Perform daily checkin
  */
 export async function performCheckin(
-  turnstileToken?: string
+  turnstileToken?: string,
+  captchaToken?: string
 ): Promise<ApiResponse<CheckinResponse>> {
   const url = turnstileToken
     ? `/api/user/checkin?turnstile=${encodeURIComponent(turnstileToken)}`
     : '/api/user/checkin'
-  const res = await api.post(url)
+  const res = await api.post(url, undefined, {
+    headers: captchaToken ? { 'X-Captcha': captchaToken } : undefined,
+  })
   return res.data
 }

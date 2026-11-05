@@ -40,10 +40,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { login, loginBySms, wechatLoginByCode } from '@/features/auth/api'
+import { Captcha } from '@/features/auth/components/captcha'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { loginFormSchema, smsLoginFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
+import { useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { useSmsVerification } from '@/features/auth/hooks/use-sms-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { beginPasskeyLogin, finishPasskeyLogin } from '@/features/auth/passkey'
@@ -103,6 +105,7 @@ export function UserAuthForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
+  const captcha = useCaptcha()
   const { handleLoginResult } = useAuthRedirect()
 
   const hasUserAgreement = Boolean(status?.user_agreement_enabled)
@@ -169,7 +172,12 @@ export function UserAuthForm({
     secondsLeft: smsSecondsLeft,
     isActive: smsCountdownActive,
     sendCode: sendSmsLoginCode,
-  } = useSmsVerification({ turnstileToken, validateTurnstile })
+  } = useSmsVerification({
+    turnstileToken,
+    validateTurnstile,
+    captchaToken: captcha.token,
+    validateCaptcha: captcha.validate,
+  })
 
   const wechatQrCodeUrl = useMemo(() => {
     return (
@@ -197,8 +205,10 @@ export function UserAuthForm({
     }
 
     if (!validateTurnstile()) return
+    if (!captcha.validate()) return
 
     const submittedTurnstileToken = turnstileToken
+    const submittedCaptchaToken = captcha.token
     if (isTurnstileEnabled) {
       setTurnstileToken('')
       setTurnstileWidgetKey((current) => current + 1)
@@ -210,6 +220,7 @@ export function UserAuthForm({
         username: data.username,
         password: data.password,
         turnstile: submittedTurnstileToken,
+        captcha: submittedCaptchaToken,
         passwordEncryptionEnabled: passwordLoginEncryptionEnabled,
       })
 
@@ -224,8 +235,16 @@ export function UserAuthForm({
     } catch (error: unknown) {
       handleServerError(AuthOperationError.from(error, loginFailedMessage))
     } finally {
+      if (captcha.isEnabled) captcha.reset()
       setIsLoading(false)
     }
+  }
+
+  async function handleSendSmsLoginCode() {
+    const token = captcha.token
+    await sendSmsLoginCode(smsForm.getValues('phone'))
+    // The CAPTCHA was consumed even when the provider rejected the number.
+    if (token) captcha.reset()
   }
 
   async function onSubmitSms(data: z.infer<typeof smsLoginFormSchema>) {
@@ -491,7 +510,7 @@ export function UserAuthForm({
             <Button
               type='submit'
               className='mt-2 w-full justify-center gap-2'
-              disabled={isLoading}
+              disabled={isLoading || !captcha.ready}
             >
               {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
               {t('Sign in')}
@@ -544,12 +563,12 @@ export function UserAuthForm({
                         type='button'
                         variant='outline'
                         className='shrink-0'
-                        disabled={isSendingSms || smsCountdownActive}
-                        onClick={() =>
-                          sendSmsLoginCode(smsForm.getValues('phone'))
+                        disabled={
+                          isSendingSms || smsCountdownActive || !captcha.ready
                         }
+                        onClick={() => void handleSendSmsLoginCode()}
                       >
-{smsCodeAction}
+                        {smsCodeAction}
                       </Button>
                     </div>
                     <FormMessage />
@@ -580,6 +599,7 @@ export function UserAuthForm({
             />
           </div>
         )}
+        <Captcha captcha={captcha} className='mt-2' />
 
         <LegalConsent
           status={status}

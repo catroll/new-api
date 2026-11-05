@@ -26,6 +26,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { bindPhone, sendBindPhoneCode } from '@/features/auth/api'
+import { Captcha } from '@/features/auth/components/captcha'
+import { useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { useCountdown } from '@/hooks/use-countdown'
 import { useStatus } from '@/hooks/use-status'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -46,6 +48,7 @@ type PhoneBindDialogProps = {
 export function PhoneBindDialog(props: PhoneBindDialogProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
+  const captcha = useCaptcha()
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -74,9 +77,11 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
       toast.error(t('Please enter your phone number'))
       return
     }
+    const token = captcha.token
+    if (!captcha.validate()) return
     setIsSending(true)
     try {
-      const res = await sendBindPhoneCode(phone.trim())
+      const res = await sendBindPhoneCode(phone.trim(), token)
       if (res?.success) {
         startCountdown()
         toast.success(t('Verification code sent'))
@@ -90,6 +95,7 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
         AuthOperationError.from(error, t('Failed to send verification code'))
       )
     } finally {
+      if (token) captcha.reset()
       setIsSending(false)
     }
   }
@@ -191,12 +197,15 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
             type='button'
             variant='outline'
             className='shrink-0'
-            disabled={isSending || countdownActive || !phone.trim()}
+            disabled={
+              isSending || countdownActive || !phone.trim() || !captcha.ready
+            }
             onClick={handleSendCode}
           >
             {codeAction}
           </Button>
         </div>
+        <Captcha captcha={captcha} />
       </div>
     </Dialog>
   )

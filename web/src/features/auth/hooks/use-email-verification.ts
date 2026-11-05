@@ -31,6 +31,8 @@ import { EMAIL_VERIFICATION_COUNTDOWN } from '../constants'
 interface UseEmailVerificationOptions {
   turnstileToken?: string
   validateTurnstile?: () => boolean
+  captchaToken?: string
+  validateCaptcha?: () => boolean
 }
 
 /**
@@ -57,10 +59,17 @@ export function useEmailVerification(options?: UseEmailVerificationOptions) {
     if (options?.validateTurnstile && !options.validateTurnstile()) {
       return false
     }
+    if (options?.validateCaptcha && !options.validateCaptcha()) {
+      return false
+    }
 
     setIsSending(true)
     try {
-      const res = await sendEmailVerification(email, options?.turnstileToken)
+      const res = await sendEmailVerification(
+        email,
+        options?.turnstileToken,
+        options?.captchaToken
+      )
       if (res?.success) {
         startCountdown()
         toast.success(i18next.t('Verification email sent'))

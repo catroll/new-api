@@ -39,10 +39,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { register, wechatLoginByCode } from '@/features/auth/api'
+import { Captcha } from '@/features/auth/components/captcha'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { registerFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
+import { useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
 import { useSmsVerification } from '@/features/auth/hooks/use-sms-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
@@ -78,6 +80,7 @@ export function SignUpForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
+  const captcha = useCaptcha()
   const { redirectToLogin, handleLoginResult } = useAuthRedirect()
   const {
     isSending: isSendingCode,
@@ -87,13 +90,20 @@ export function SignUpForm({
   } = useEmailVerification({
     turnstileToken,
     validateTurnstile,
+    captchaToken: captcha.token,
+    validateCaptcha: captcha.validate,
   })
   const {
     isSending: isSendingSms,
     secondsLeft: smsSecondsLeft,
     isActive: smsActive,
     sendCode: sendSmsCodeAction,
-  } = useSmsVerification({ turnstileToken, validateTurnstile })
+  } = useSmsVerification({
+    turnstileToken,
+    validateTurnstile,
+    captchaToken: captcha.token,
+    validateCaptcha: captcha.validate,
+  })
 
   const form = useForm<z.infer<typeof registerFormSchema>>({
     resolver: zodResolver(registerFormSchema),
@@ -188,6 +198,7 @@ export function SignUpForm({
     }
 
     if (!validateTurnstile()) return
+    if (!captcha.validate()) return
 
     setIsLoading(true)
     try {
@@ -200,6 +211,7 @@ export function SignUpForm({
         phone_code: data.phoneCode?.trim() || undefined,
         aff_code: getAffiliateCode(),
         turnstile: turnstileToken,
+        captcha: captcha.token,
       })
 
       if (res?.success) {
@@ -213,22 +225,27 @@ export function SignUpForm({
         AuthOperationError.from(error, t('Failed to create account'))
       )
     } finally {
+      if (captcha.isEnabled) captcha.reset()
       setIsLoading(false)
     }
   }
 
   async function handleSendSmsVerificationCode() {
+    const token = captcha.token
     if (await sendSmsCodeAction(form.getValues('phone') || '', 'register')) {
       setTurnstileToken('')
       setTurnstileWidgetKey((current) => current + 1)
     }
+    if (token) captcha.reset()
   }
 
   async function handleSendVerificationCode() {
+    const token = captcha.token
     if (await sendCode(emailValue || '')) {
       setTurnstileToken('')
       setTurnstileWidgetKey((current) => current + 1)
     }
+    if (token) captcha.reset()
   }
 
   const handleOpenWeChatDialog = () => {
@@ -386,7 +403,8 @@ export function SignUpForm({
                   isSendingCode ||
                   isActive ||
                   !emailValue ||
-                  !turnstileReady
+                  !turnstileReady ||
+                  !captcha.ready
                 }
                 onClick={handleSendVerificationCode}
               >
@@ -445,11 +463,12 @@ export function SignUpForm({
                   isSendingSms ||
                   smsActive ||
                   !phoneValue?.trim() ||
-                  !turnstileReady
+                  !turnstileReady ||
+                  !captcha.ready
                 }
                 onClick={handleSendSmsVerificationCode}
               >
-{smsCodeAction}
+                {smsCodeAction}
               </Button>
             </div>
           </>
@@ -465,6 +484,7 @@ export function SignUpForm({
             />
           </div>
         )}
+        <Captcha captcha={captcha} className='mt-2' />
 
         <LegalConsent
           status={status}
@@ -480,7 +500,8 @@ export function SignUpForm({
           disabled={
             isLoading ||
             (requiresLegalConsent && !agreedToLegal) ||
-            !turnstileReady
+            !turnstileReady ||
+            !captcha.ready
           }
         >
           {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}

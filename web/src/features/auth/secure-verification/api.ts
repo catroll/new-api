@@ -74,6 +74,7 @@ export async function checkVerificationMethods(
  */
 export async function sendVerificationSMS(
   operation: VerificationOperation,
+  captcha?: string,
   signal?: AbortSignal
 ): Promise<VerificationSMSCode> {
   return authResult<VerificationSMSCode>(
@@ -83,7 +84,11 @@ export async function sendVerificationSMS(
         scope: operation.scope,
         ...(operation.context ? { context: operation.context } : {}),
       },
-      { ...authRequestOptions, signal }
+      {
+        ...authRequestOptions,
+        signal,
+        headers: captcha ? { 'X-Captcha': captcha } : undefined,
+      }
     )
   )
 }

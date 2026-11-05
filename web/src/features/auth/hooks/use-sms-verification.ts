@@ -32,6 +32,8 @@ import type { SmsCodePurpose } from '../types'
 interface UseSmsVerificationOptions {
   turnstileToken?: string
   validateTurnstile?: () => boolean
+  captchaToken?: string
+  validateCaptcha?: () => boolean
 }
 
 /**
@@ -55,6 +57,9 @@ export function useSmsVerification(options?: UseSmsVerificationOptions) {
     if (options?.validateTurnstile && !options.validateTurnstile()) {
       return false
     }
+    if (options?.validateCaptcha && !options.validateCaptcha()) {
+      return false
+    }
 
     setIsSending(true)
     try {
@@ -62,6 +67,7 @@ export function useSmsVerification(options?: UseSmsVerificationOptions) {
         phone: phone.trim(),
         purpose,
         turnstile: options?.turnstileToken,
+        captcha: options?.captchaToken,
       })
       if (res?.success) {
         startCountdown()

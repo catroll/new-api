@@ -37,7 +37,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { resetPasswordBySms } from '@/features/auth/api'
+import { Captcha } from '@/features/auth/components/captcha'
 import { forgotPasswordSmsFormSchema } from '@/features/auth/constants'
+import { useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { useSmsVerification } from '@/features/auth/hooks/use-sms-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
@@ -63,12 +65,18 @@ export function SmsResetForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
+  const captcha = useCaptcha()
   const {
     isSending,
     secondsLeft,
     isActive,
     sendCode: sendResetCode,
-  } = useSmsVerification({ turnstileToken, validateTurnstile })
+  } = useSmsVerification({
+    turnstileToken,
+    validateTurnstile,
+    captchaToken: captcha.token,
+    validateCaptcha: captcha.validate,
+  })
 
   const form = useForm<z.infer<typeof forgotPasswordSmsFormSchema>>({
     resolver: zodResolver(forgotPasswordSmsFormSchema),
@@ -77,9 +85,11 @@ export function SmsResetForm({
   const phoneValue = useWatch({ control: form.control, name: 'phone' })
 
   async function sendCode() {
+    const token = captcha.token
     if (await sendResetCode(form.getValues('phone') || '', 'reset')) {
       setTurnstileToken('')
     }
+    if (token) captcha.reset()
   }
 
   async function onSubmit(data: z.infer<typeof forgotPasswordSmsFormSchema>) {
@@ -194,10 +204,15 @@ export function SmsResetForm({
                   type='button'
                   variant='outline'
                   className='shrink-0'
-                  disabled={isSending || isActive || !phoneValue?.trim()}
+                  disabled={
+                    isSending ||
+                    isActive ||
+                    !phoneValue?.trim() ||
+                    !captcha.ready
+                  }
                   onClick={sendCode}
                 >
-{codeAction}
+                  {codeAction}
                 </Button>
               </div>
               <FormMessage />
@@ -212,9 +227,13 @@ export function SmsResetForm({
 
         {isTurnstileEnabled && (
           <div className='mt-2'>
-            <Turnstile siteKey={turnstileSiteKey} onVerify={setTurnstileToken} />
+            <Turnstile
+              siteKey={turnstileSiteKey}
+              onVerify={setTurnstileToken}
+            />
           </div>
         )}
+        <Captcha captcha={captcha} className='mt-2' />
       </form>
     </Form>
   )

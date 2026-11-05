@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   CalendarDays,
   ChevronDown,
+  Loader2,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -41,6 +42,8 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip'
+import { Captcha } from '@/features/auth/components/captcha'
+import { useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { formatQuotaWithCurrency } from '@/lib/currency'
 import dayjs from '@/lib/dayjs'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -54,14 +57,17 @@ interface CheckinCalendarCardProps {
   checkinEnabled: boolean
   turnstileEnabled: boolean
   turnstileSiteKey: string
+  captchaEnabled: boolean
 }
 
 export function CheckinCalendarCard({
   checkinEnabled,
   turnstileEnabled,
   turnstileSiteKey,
+  captchaEnabled,
 }: CheckinCalendarCardProps) {
   const { t } = useTranslation()
+  const captcha = useCaptcha()
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -141,10 +147,10 @@ export function CheckinCalendarCard({
   )
 
   const doCheckin = useCallback(
-    async (token?: string) => {
+    async (token?: string, captchaToken?: string) => {
       setCheckinLoading(true)
       try {
-        const res = await performCheckin(token)
+        const res = await performCheckin(token, captchaToken)
         if (res.success && res.data) {
           toast.success(
             `${t('Check-in successful! Received')} ${formatQuotaWithCurrency(res.data.quota_awarded)}`
@@ -168,10 +174,11 @@ export function CheckinCalendarCard({
       } catch (error) {
         handleServerError(error, t('Check-in failed'))
       } finally {
+        if (captchaToken) captcha.reset()
         setCheckinLoading(false)
       }
     },
-    [refetch, shouldTriggerTurnstile, t, turnstileSiteKey]
+    [captcha, refetch, shouldTriggerTurnstile, t, turnstileSiteKey]
   )
 
   const handlePrevMonth = () => {
@@ -212,7 +219,10 @@ export function CheckinCalendarCard({
     const remaining = 7 - (days.length % 7)
     if (remaining < 7) {
       for (let i = 1; i <= remaining; i++) {
-        days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false })
+        days.push({
+          date: new Date(year, month + 1, i),
+          isCurrentMonth: false,
+        })
       }
     }
 
@@ -259,6 +269,7 @@ export function CheckinCalendarCard({
           setTurnstileModalVisible(open)
           if (!open) {
             setTurnstileWidgetKey((v) => v + 1)
+            if (captchaEnabled) captcha.reset()
           }
         }}
         title={t('Security Check')}
@@ -269,18 +280,34 @@ export function CheckinCalendarCard({
         <div className='text-muted-foreground text-sm'>
           {t('Please complete the security check to continue.')}
         </div>
-        <div className='flex justify-center py-4'>
-          <Turnstile
-            key={turnstileWidgetKey}
-            siteKey={turnstileSiteKey}
-            onVerify={(token) => {
-              doCheckin(token)
-            }}
-            onExpire={() => {
-              setTurnstileWidgetKey((v) => v + 1)
-            }}
-          />
-        </div>
+        {captchaEnabled ? (
+          <div className='space-y-3'>
+            <Captcha captcha={captcha} />
+            <Button
+              className='w-full'
+              onClick={() => void doCheckin(undefined, captcha.token)}
+              disabled={!captcha.ready || checkinLoading}
+            >
+              {checkinLoading ? (
+                <Loader2 className='h-4 w-4 animate-spin' />
+              ) : null}
+              {t('Check in now')}
+            </Button>
+          </div>
+        ) : (
+          <div className='flex justify-center py-4'>
+            <Turnstile
+              key={turnstileWidgetKey}
+              siteKey={turnstileSiteKey}
+              onVerify={(token) => {
+                doCheckin(token)
+              }}
+              onExpire={() => {
+                setTurnstileWidgetKey((v) => v + 1)
+              }}
+            />
+          </div>
+        )}
       </Dialog>
 
       <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
@@ -325,7 +352,14 @@ export function CheckinCalendarCard({
               </div>
             </button>
             <Button
-              onClick={() => doCheckin()}
+              onClick={() => {
+                if (captchaEnabled) {
+                  captcha.refresh()
+                  setTurnstileModalVisible(true)
+                  return
+                }
+                void doCheckin()
+              }}
               disabled={checkinLoading || checkedToday}
               size='sm'
               className='w-full shrink-0 sm:w-auto'

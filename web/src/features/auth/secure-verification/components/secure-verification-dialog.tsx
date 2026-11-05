@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Captcha } from '@/features/auth/components/captcha'
+import { useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { AuthOperationError } from '@/lib/secure-verification'
 
 import type { PasskeyDomains } from '../../passkey/assertion'
@@ -65,6 +67,7 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
   const { t } = useTranslation()
   const inputId = useId()
   const state = props.state
+  const captcha = useCaptcha()
   const [sms, setSMS] = useState<SMSDeliveryState>({
     status: 'idle',
     seconds: 0,
@@ -115,9 +118,11 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
 
   const sendCode = async () => {
     if (!smsOperation || sendingSMS || smsCooldown) return
+    const token = captcha.token
+    if (!captcha.validate()) return
     setSMS({ status: 'sending', seconds: 0 })
     try {
-      const delivery = await sendVerificationSMS(smsOperation)
+      const delivery = await sendVerificationSMS(smsOperation, token)
       setSMS({
         status: 'sent',
         seconds: delivery.resend_seconds ?? 60,
@@ -128,6 +133,8 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
         seconds: 0,
         error: AuthOperationError.from(failure).message,
       })
+    } finally {
+      if (token) captcha.reset()
     }
   }
 
@@ -297,7 +304,9 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
                 <Button
                   type='button'
                   variant='outline'
-                  disabled={verifying || sendingSMS || smsCooldown}
+                  disabled={
+                    verifying || sendingSMS || smsCooldown || !captcha.ready
+                  }
                   onClick={() => void sendCode()}
                 >
                   {sendingSMS && <Loader2 className='size-4 animate-spin' />}
@@ -305,6 +314,7 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
                     ? t('Resend in {{seconds}}s', { seconds: sms.seconds })
                     : t('Send code')}
                 </Button>
+                <Captcha captcha={captcha} />
                 {sms.error && (
                   <p role='alert' className='text-destructive text-sm'>
                     {t(sms.error)}

@@ -36,10 +36,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { sendPasswordResetEmail } from '@/features/auth/api'
+import { Captcha } from '@/features/auth/components/captcha'
 import {
   forgotPasswordFormSchema,
   PASSWORD_RESET_COUNTDOWN,
 } from '@/features/auth/constants'
+import { useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { useCountdown } from '@/hooks/use-countdown'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -61,6 +63,7 @@ export function ForgotPasswordForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
+  const captcha = useCaptcha()
   const {
     secondsLeft,
     isActive,
@@ -75,10 +78,15 @@ export function ForgotPasswordForm({
 
   async function onSubmit(data: z.infer<typeof forgotPasswordFormSchema>) {
     if (!validateTurnstile()) return
+    if (!captcha.validate()) return
 
     setIsLoading(true)
     try {
-      const res = await sendPasswordResetEmail(data.email, turnstileToken)
+      const res = await sendPasswordResetEmail(
+        data.email,
+        turnstileToken,
+        captcha.token
+      )
       if (res?.success) {
         form.reset()
         startCountdown()
@@ -93,6 +101,7 @@ export function ForgotPasswordForm({
         AuthOperationError.from(_error, t('Failed to send reset email'))
       )
     } finally {
+      if (captcha.isEnabled) captcha.reset()
       setIsLoading(false)
     }
   }
@@ -121,7 +130,7 @@ export function ForgotPasswordForm({
         <Button
           type='submit'
           className='mt-2'
-          disabled={isLoading || isActive || !turnstileReady}
+          disabled={isLoading || isActive || !turnstileReady || !captcha.ready}
         >
           {isActive
             ? t('Resend ({{seconds}}s)', { seconds: secondsLeft })
@@ -137,6 +146,7 @@ export function ForgotPasswordForm({
             />
           </div>
         )}
+        <Captcha captcha={captcha} className='mt-2' />
       </form>
     </Form>
   )
