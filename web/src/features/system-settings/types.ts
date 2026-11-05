@@ -408,6 +408,7 @@ export type OperationsSettings = {
   'sms.ip_hourly_limit': number
   'sms.daily_quota': number
   'sms.register_daily_quota': number
+  'sms.register_ip_hourly_limit': number
   WorkerUrl: string
   WorkerValidKey: string
   WorkerAllowHttpImageRequestEnabled: boolean

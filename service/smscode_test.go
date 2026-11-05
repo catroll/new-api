@@ -128,6 +128,28 @@ func TestSMSRegisterDailyBudget(t *testing.T) {
 	}
 }
 
+func TestSMSRegisterIPHourlyBudget(t *testing.T) {
+	ctx := context.Background()
+	ip := fmt.Sprintf("198.51.100.%d", time.Now().UnixNano()%200+1)
+	store := smsCodeStoreForUse()
+	if err := store.Del(ctx, smsRegisterIPHourlyKey(ip)); err != nil {
+		t.Fatalf("reset register IP budget = %v", err)
+	}
+
+	for send := 1; send <= 2; send++ {
+		if err := TakeSMSRegisterIPHourlyBudget(ctx, ip, 2); err != nil {
+			t.Fatalf("send %d = %v, want nil", send, err)
+		}
+	}
+	if err := TakeSMSRegisterIPHourlyBudget(ctx, ip, 2); !errors.Is(err, ErrSMSRegisterIPLimit) {
+		t.Fatalf("third send = %v, want ErrSMSRegisterIPLimit", err)
+	}
+	// A different source has its own slot.
+	if err := TakeSMSRegisterIPHourlyBudget(ctx, ip+"x", 2); err != nil {
+		t.Fatalf("other IP = %v, want nil", err)
+	}
+}
+
 // A registration send must consume the registration-only counter; otherwise the
 // separate quota would exist in the settings but never protect anything.
 func TestSendSMSCodeConsumesRegisterDailyBudget(t *testing.T) {

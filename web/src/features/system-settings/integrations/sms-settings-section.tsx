@@ -766,6 +766,31 @@ export function SmsSettingsSection({ defaultValues }: SmsSettingsSectionProps) {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name='sms.register_ip_hourly_limit'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Registration codes per IP per hour')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                      disabled={isSaving}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Limits one network from requesting codes for many numbers'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           <div

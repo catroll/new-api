@@ -112,6 +112,7 @@ const OPERATIONS_SECTIONS = [
           ip_hourly_limit: settings['sms.ip_hourly_limit'],
           daily_quota: settings['sms.daily_quota'],
           register_daily_quota: settings['sms.register_daily_quota'],
+          register_ip_hourly_limit: settings['sms.register_ip_hourly_limit'],
         }}
       />
     ),

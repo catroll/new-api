@@ -67,6 +67,7 @@ const defaultOperationsSettings: OperationsSettings = {
   'sms.ip_hourly_limit': 10,
   'sms.daily_quota': 3000,
   'sms.register_daily_quota': 200,
+  'sms.register_ip_hourly_limit': 5,
   WorkerUrl: '',
   WorkerValidKey: '',
   WorkerAllowHttpImageRequestEnabled: false,

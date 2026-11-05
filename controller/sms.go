@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -73,6 +74,10 @@ func SendSMSVerification(c *gin.Context) {
 			return
 		}
 		if err := model.EnsurePhoneAvailable(phone, 0); err != nil {
+			writeSMSError(c, err)
+			return
+		}
+		if err := service.TakeSMSRegisterIPHourlyBudget(c.Request.Context(), c.ClientIP(), settings.RegisterIPHourlyLimit); err != nil {
 			writeSMSError(c, err)
 			return
 		}
@@ -293,6 +298,7 @@ var smsErrorSentinels = []error{
 	service.ErrSMSPhoneDailyLimit,
 	service.ErrSMSDailyQuota,
 	service.ErrSMSRegisterDailyLimit,
+	service.ErrSMSRegisterIPLimit,
 	service.ErrSMSCodeInvalid,
 	service.ErrSMSCodeTooMany,
 	service.ErrSMSStoreUnavailable,
@@ -335,6 +341,10 @@ func writeSMSError(c *gin.Context, err error) {
 	case errors.Is(err, service.ErrSMSRegisterDailyLimit):
 		logger.LogWarn(c.Request.Context(), common.LogText("sms registration daily quota exhausted"))
 		common.ApiErrorT(c, "Daily registration SMS quota reached")
+	case errors.Is(err, service.ErrSMSRegisterIPLimit):
+		logger.LogWarn(c.Request.Context(), common.LogText("sms registration IP hourly limit exhausted ip=%s", c.ClientIP()))
+		c.Header("Retry-After", "3600")
+		common.ApiErrorStatus(c, http.StatusTooManyRequests, common.NewMessage("Too many registration codes requested from this network, please try again later"))
 	case errors.Is(err, service.ErrSMSCodeInvalid):
 		common.ApiErrorT(c, "Verification code is incorrect or has expired")
 	case errors.Is(err, service.ErrSMSCodeTooMany):

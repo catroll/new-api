@@ -58,6 +58,9 @@ type SMSSettings struct {
 	// send per day. It is separate from DailyQuota so a registration flood
 	// cannot exhaust SMS login and password reset for existing users.
 	RegisterDailyQuota int `json:"register_daily_quota"`
+	// RegisterIPHourlyLimit caps registration codes per client IP per hour, so
+	// one source cannot walk through a block of unused numbers.
+	RegisterIPHourlyLimit int `json:"register_ip_hourly_limit"`
 
 	AllowedCountryCodes string `json:"allowed_country_codes"`
 }
@@ -117,6 +120,9 @@ func (s SMSSettings) WithDefaults() SMSSettings {
 	}
 	if s.RegisterDailyQuota <= 0 {
 		s.RegisterDailyQuota = 200
+	}
+	if s.RegisterIPHourlyLimit <= 0 {
+		s.RegisterIPHourlyLimit = 5
 	}
 	if strings.TrimSpace(s.TemplateParamKey) == "" {
 		s.TemplateParamKey = "code"

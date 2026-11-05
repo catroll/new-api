@@ -596,6 +596,12 @@ func applySMSOptionValue(settings *system_setting.SMSSettings, field, value stri
 			return common.NewMessage("SMS registration daily quota must be a number")
 		}
 		settings.RegisterDailyQuota = parsed
+	case "register_ip_hourly_limit":
+		parsed, err := parseInt()
+		if err != nil {
+			return common.NewMessage("SMS registration IP hourly limit must be a number")
+		}
+		settings.RegisterIPHourlyLimit = parsed
 	}
 	return nil
 }

@@ -29,6 +29,7 @@ const (
 	smsAttemptsTTL      = 10 * time.Minute
 	smsCodeLength       = 6
 	smsDailyBudgetGrace = time.Hour
+	smsHourlyTTL        = time.Hour + time.Minute
 )
 
 var (
@@ -38,6 +39,7 @@ var (
 	ErrSMSPhoneDailyLimit    = errors.New("Daily SMS limit for this number reached")
 	ErrSMSDailyQuota         = errors.New("Daily SMS quota reached")
 	ErrSMSRegisterDailyLimit = errors.New("Daily registration SMS quota reached")
+	ErrSMSRegisterIPLimit    = errors.New("Too many registration codes requested from this network, please try again later")
 	ErrSMSStoreUnavailable   = errors.New("SMS verification is temporarily unavailable")
 )
 
@@ -191,6 +193,10 @@ func smsRegisterDailyKey() string {
 	return fmt.Sprintf("%s:register:day:%s", smsKeyPrefix, time.Now().Format("20060102"))
 }
 
+func smsRegisterIPHourlyKey(ip string) string {
+	return fmt.Sprintf("%s:register:ip:%s:%s", smsKeyPrefix, time.Now().Format("2006010215"), ip)
+}
+
 // SMSCodeScopeForBind binds a code to one account and one number, so a code
 // issued for account A cannot be redeemed by account B.
 func SMSCodeScopeForBind(userID int, phone string) string {
@@ -320,6 +326,25 @@ func TakeSMSRegisterDailyBudget(ctx context.Context, limit int) error {
 	}
 	if int(count) > limit {
 		return ErrSMSRegisterDailyLimit
+	}
+	return nil
+}
+
+// TakeSMSRegisterIPHourlyBudget caps how many registration codes one client IP
+// may request per hour. The daily registration budget bounds the total cost;
+// this bounds the burst a single source can cause.
+func TakeSMSRegisterIPHourlyBudget(ctx context.Context, ip string, limit int) error {
+	ip = strings.TrimSpace(ip)
+	if limit <= 0 || ip == "" {
+		return nil
+	}
+	store := smsCodeStoreForUse()
+	count, err := store.Incr(ctx, smsRegisterIPHourlyKey(ip), smsHourlyTTL)
+	if err != nil {
+		return ErrSMSStoreUnavailable
+	}
+	if int(count) > limit {
+		return ErrSMSRegisterIPLimit
 	}
 	return nil
 }
