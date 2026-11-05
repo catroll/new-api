@@ -47,12 +47,15 @@ func TestSendSMSVerificationRegisterRequiresThePhonePolicy(t *testing.T) {
 	settings := smsSendTestSettings(t)
 	previousRegister := common.RegisterEnabled
 	previousPasswordRegister := common.PasswordRegisterEnabled
+	previousEmailVerification := common.EmailVerificationEnabled
 	t.Cleanup(func() {
 		common.RegisterEnabled = previousRegister
 		common.PasswordRegisterEnabled = previousPasswordRegister
+		common.EmailVerificationEnabled = previousEmailVerification
 	})
 	common.RegisterEnabled = true
 	common.PasswordRegisterEnabled = true
+	common.EmailVerificationEnabled = false
 
 	settings.RequirePhone = false
 	success, message := smsSendTestRequest(t, "purpose=register&phone=13800138000")
@@ -66,6 +69,12 @@ func TestSendSMSVerificationRegisterRequiresThePhonePolicy(t *testing.T) {
 	require.Equal(t, "SMS registration verification is not enabled", message)
 
 	common.PasswordRegisterEnabled = true
+	common.EmailVerificationEnabled = true
+	success, message = smsSendTestRequest(t, "purpose=register&phone=13800138000")
+	require.False(t, success)
+	require.Equal(t, "SMS registration verification is not enabled", message)
+
+	common.EmailVerificationEnabled = false
 	common.RegisterEnabled = false
 	success, message = smsSendTestRequest(t, "purpose=register&phone=13800138000")
 	require.False(t, success)

@@ -69,7 +69,7 @@ func SendSMSVerification(c *gin.Context) {
 			common.ApiErrorT(c, "New user registration has been disabled by administrator")
 			return
 		}
-		if !common.PasswordRegisterEnabled || !settings.RequirePhone {
+		if !common.PasswordRegisterEnabled || !settings.RequirePhone || common.EmailVerificationEnabled {
 			common.ApiErrorT(c, "SMS registration verification is not enabled")
 			return
 		}
