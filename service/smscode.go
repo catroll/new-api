@@ -48,6 +48,7 @@ var (
 type smsCodeStore interface {
 	Set(ctx context.Context, key, value string, ttl time.Duration) error
 	Get(ctx context.Context, key string) (string, bool, error)
+	GetDel(ctx context.Context, key string) (string, bool, error)
 	Del(ctx context.Context, key string) error
 	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
 	Decr(ctx context.Context, key string, ttl time.Duration) (int64, error)
@@ -62,6 +63,25 @@ func (redisSMSCodeStore) Set(ctx context.Context, key, value string, ttl time.Du
 
 func (redisSMSCodeStore) Get(ctx context.Context, key string) (string, bool, error) {
 	value, err := common.RDB.Get(ctx, key).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return value, true, nil
+}
+
+// GetDel returns and removes a value in one Redis round trip. Verification
+// codes and CAPTCHA answers are one-shot: a second read must miss even when two
+// requests race.
+func (redisSMSCodeStore) GetDel(ctx context.Context, key string) (string, bool, error) {
+	const script = `local value = redis.call("GET", KEYS[1])
+if value then
+  redis.call("DEL", KEYS[1])
+end
+return value`
+	value, err := common.RDB.Eval(ctx, script, []string{key}).Text()
 	if errors.Is(err, redis.Nil) {
 		return "", false, nil
 	}
@@ -136,6 +156,20 @@ func (m *memorySMSCodeStore) Get(_ context.Context, key string) (string, bool, e
 	}
 	if time.Now().After(entry.expiresAt) {
 		delete(m.values, key)
+		return "", false, nil
+	}
+	return entry.value, true, nil
+}
+
+func (m *memorySMSCodeStore) GetDel(_ context.Context, key string) (string, bool, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	entry, ok := m.values[key]
+	if !ok {
+		return "", false, nil
+	}
+	delete(m.values, key)
+	if time.Now().After(entry.expiresAt) {
 		return "", false, nil
 	}
 	return entry.value, true, nil
