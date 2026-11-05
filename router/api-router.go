@@ -26,6 +26,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/setup", controller.GetSetup)
 		apiRouter.POST("/setup", anonymousRequestBodyLimit, controller.PostSetup)
 		apiRouter.GET("/status", controller.GetStatus)
+		apiRouter.GET("/captcha", middleware.CaptchaRateLimit(), middleware.DisableCache(), controller.GetCaptcha)
 		apiRouter.GET("/uptime/status", controller.GetUptimeKumaStatus)
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
@@ -43,10 +44,10 @@ func SetApiRouter(router *gin.Engine) {
 			perfMetricsRoute.GET("", controller.GetPerfMetrics)
 		}
 		apiRouter.GET("/rankings", middleware.HeaderNavModuleAuth("rankings"), controller.GetRankings)
-		apiRouter.GET("/verification", middleware.SendEndpointOriginGuard(), middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
-		apiRouter.GET("/verification/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), controller.SendSMSVerification)
-		apiRouter.GET("/reset_password", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
-		apiRouter.GET("/reset_password/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetSMS)
+		apiRouter.GET("/verification", middleware.SendEndpointOriginGuard(), middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendEmailVerification)
+		apiRouter.GET("/verification/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendSMSVerification)
+		apiRouter.GET("/reset_password", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendPasswordResetEmail)
+		apiRouter.GET("/reset_password/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendPasswordResetSMS)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPassword)
 		apiRouter.POST("/user/reset/sms", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPasswordBySMS)
 		// OAuth routes - specific routes must come before :provider wildcard
@@ -74,16 +75,16 @@ func SetApiRouter(router *gin.Engine) {
 
 		// Universal secure verification routes
 		apiRouter.GET("/verify/methods", middleware.UserAuth(), middleware.DisableCache(), controller.GetVerificationMethods)
-		apiRouter.POST("/verify/sms", middleware.UserAuth(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.UserCriticalRateLimit("security-verification"), middleware.DisableCache(), controller.SendVerificationSMS)
+		apiRouter.POST("/verify/sms", middleware.UserAuth(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.UserCriticalRateLimit("security-verification"), middleware.DisableCache(), middleware.CaptchaCheck(), controller.SendVerificationSMS)
 		apiRouter.POST("/verify", middleware.UserAuth(), middleware.CriticalRateLimit(), middleware.UserCriticalRateLimit("security-verification"), middleware.DisableCache(), controller.UniversalVerify)
 
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/auth/refresh", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.RefreshAuth)
 			userRoute.POST("/auth/logout", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.AuthLogout)
-			userRoute.POST("/register", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.TurnstileCheck(), controller.Register)
+			userRoute.POST("/register", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.Register)
 			userRoute.GET("/login/encryption-key", middleware.DisableCache(), controller.GetPasswordEncryptionKey)
-			userRoute.POST("/login", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, middleware.TurnstileCheck(), controller.Login)
+			userRoute.POST("/login", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.Login)
 			userRoute.POST("/login/2fa", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, controller.Verify2FALogin)
 			userRoute.POST("/login/verify", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, controller.VerifyLogin)
 			userRoute.POST("/login/sms", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, controller.LoginWithSMS)
@@ -104,7 +105,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/sessions/revoke-others", middleware.DisableCache(), controller.RevokeOtherLoginSessions)
 				selfRoute.GET("/self/groups", controller.GetUserGroups)
 				selfRoute.GET("/self", controller.GetSelf)
-				selfRoute.POST("/phone/bind/code", middleware.CriticalRateLimit(), middleware.UserCriticalRateLimit("phone-bind"), controller.SendPhoneBindCode)
+				selfRoute.POST("/phone/bind/code", middleware.CriticalRateLimit(), middleware.UserCriticalRateLimit("phone-bind"), middleware.CaptchaCheck(), controller.SendPhoneBindCode)
 				selfRoute.POST("/phone/bind", middleware.CriticalRateLimit(), middleware.UserCriticalRateLimit("phone-bind"), middleware.DisableCache(), controller.BindPhone)
 				selfRoute.GET("/models", controller.GetUserModels)
 				selfRoute.PUT("/self", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.UpdateSelf)
@@ -153,7 +154,7 @@ func SetApiRouter(router *gin.Engine) {
 
 				// Check-in routes
 				selfRoute.GET("/checkin", controller.GetCheckinStatus)
-				selfRoute.POST("/checkin", middleware.TurnstileCheck(), controller.DoCheckin)
+				selfRoute.POST("/checkin", middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.DoCheckin)
 
 				// Custom OAuth bindings
 				selfRoute.GET("/oauth/bindings", controller.GetUserOAuthBindings)

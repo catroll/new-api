@@ -272,6 +272,15 @@ func UpdateOption(c *gin.Context) {
 			common.ApiErrorT(c, "Cannot enable Turnstile verification. Enter the Turnstile settings first.")
 			return
 		}
+		if option.Value == "true" && common.CaptchaEnabled {
+			common.ApiErrorT(c, "Disable the self-hosted CAPTCHA before enabling Turnstile.")
+			return
+		}
+	case "CaptchaEnabled":
+		if option.Value == "true" && common.TurnstileCheckEnabled {
+			common.ApiErrorT(c, "Disable Turnstile before enabling the self-hosted CAPTCHA.")
+			return
+		}
 	case "TelegramOAuthEnabled":
 		if option.Value == "true" && !system_setting.GetTelegramSettings().IsConfigured() {
 			c.JSON(http.StatusOK, gin.H{

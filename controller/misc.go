@@ -76,6 +76,7 @@ func GetStatus(c *gin.Context) {
 		"server_address":              system_setting.ServerAddress,
 		"turnstile_check":             common.TurnstileCheckEnabled,
 		"turnstile_site_key":          common.TurnstileSiteKey,
+		"captcha_check":               common.CaptchaEnabled && !common.TurnstileCheckEnabled,
 		"docs_link":                   operation_setting.GetGeneralSetting().DocsLink,
 		"quota_per_unit":              common.QuotaPerUnit,
 		// 兼容旧前端：保留 display_in_currency，同时提供新的 quota_display_type
@@ -105,7 +106,7 @@ func GetStatus(c *gin.Context) {
 		// Payment currency, not display currency: the wallet labels the amount it
 		// is about to charge with this, while quota_display_type still decides how
 		// balances are shown.
-		"payment_currency": setting.PaymentCurrency,
+		"payment_currency":  setting.PaymentCurrency,
 		"stripe_unit_price": setting.StripeUnitPrice,
 
 		// 面板启用开关
