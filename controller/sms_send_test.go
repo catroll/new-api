@@ -99,3 +99,14 @@ func TestSendSMSVerificationRegisterPassesThePolicyGate(t *testing.T) {
 	require.False(t, success)
 	require.Equal(t, "Please enter a valid phone number", message)
 }
+
+// Disabling SMS login must stop the paid login codes too, not just the login
+// endpoint that redeems them.
+func TestSendSMSVerificationLoginRequiresLoginEnabled(t *testing.T) {
+	settings := smsSendTestSettings(t)
+	settings.LoginEnabled = false
+
+	success, message := smsSendTestRequest(t, "purpose=login&phone=13800138000")
+	require.False(t, success)
+	require.Equal(t, "SMS login is not enabled", message)
+}

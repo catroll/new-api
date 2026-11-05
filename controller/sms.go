@@ -51,7 +51,20 @@ func SendSMSVerification(c *gin.Context) {
 	}
 
 	switch purpose {
-	case service.SMSCodePurposeLogin, service.SMSCodePurposeReset:
+	case service.SMSCodePurposeLogin:
+		if !settings.LoginEnabled {
+			common.ApiErrorT(c, "SMS login is not enabled")
+			return
+		}
+		if _, err := model.GetUniqueUserByPhone(phone); err != nil {
+			if errors.Is(err, model.ErrPhoneNotFound) {
+				common.ApiSuccess(c, nil)
+				return
+			}
+			writeSMSError(c, err)
+			return
+		}
+	case service.SMSCodePurposeReset:
 		if _, err := model.GetUniqueUserByPhone(phone); err != nil {
 			if errors.Is(err, model.ErrPhoneNotFound) {
 				common.ApiSuccess(c, nil)
