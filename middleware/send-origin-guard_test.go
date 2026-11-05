@@ -26,8 +26,11 @@ func TestSendEndpointOriginGuard(t *testing.T) {
 		want    int
 	}{
 		{name: "native client without browser headers", want: http.StatusNoContent},
-		{name: "same-origin fetch", headers: map[string]string{"Sec-Fetch-Site": "same-origin"}, want: http.StatusNoContent},
-		{name: "top-level navigation", headers: map[string]string{"Sec-Fetch-Site": "none"}, want: http.StatusNoContent},
+		{name: "same-origin fetch", headers: map[string]string{"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors"}, want: http.StatusNoContent},
+		{name: "site none without mode", headers: map[string]string{"Sec-Fetch-Site": "none"}, want: http.StatusNoContent},
+		{name: "navigated link", headers: map[string]string{"Sec-Fetch-Mode": "navigate"}, want: http.StatusForbidden},
+		{name: "no-cors image", headers: map[string]string{"Sec-Fetch-Mode": "no-cors"}, want: http.StatusForbidden},
+		{name: "plain fetch mode", headers: map[string]string{"Sec-Fetch-Mode": "cors"}, want: http.StatusNoContent},
 		{name: "same-site subdomain", headers: map[string]string{"Sec-Fetch-Site": "same-site"}, want: http.StatusForbidden},
 		{name: "cross-site fetch", headers: map[string]string{"Sec-Fetch-Site": "cross-site"}, want: http.StatusForbidden},
 		{name: "matching origin", headers: map[string]string{"Origin": "https://token.shanedit.com"}, want: http.StatusNoContent},
@@ -53,4 +56,24 @@ func TestSendEndpointOriginGuard(t *testing.T) {
 			require.Equal(t, tc.want, recorder.Code)
 		})
 	}
+}
+
+func TestSendEndpointOriginGuardAllowsLocalDevPorts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/send", SendEndpointOriginGuard(), func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "http://localhost:3000/send", nil)
+	request.Header.Set("Origin", "http://localhost:3001")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	require.Equal(t, http.StatusNoContent, recorder.Code)
+
+	request = httptest.NewRequest(http.MethodGet, "https://token.shanedit.com/send", nil)
+	request.Header.Set("Origin", "https://token.shanedit.com:8443")
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
 }

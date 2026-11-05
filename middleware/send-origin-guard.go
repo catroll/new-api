@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -38,6 +39,19 @@ func isSameOriginBrowserRequest(r *http.Request) bool {
 		}
 	}
 
+	// Code sending is a background fetch, never a navigation or an <img>. A
+	// link in an email or a no-cors subresource is not a legitimate caller, and
+	// rejecting those modes closes the cases where Sec-Fetch-Site is missing.
+	if values := r.Header.Values("Sec-Fetch-Mode"); len(values) > 1 {
+		return false
+	} else if len(values) == 1 {
+		switch strings.ToLower(strings.TrimSpace(values[0])) {
+		case "cors", "same-origin":
+		default:
+			return false
+		}
+	}
+
 	for _, header := range []string{"Origin", "Referer"} {
 		values := r.Header.Values(header)
 		if len(values) == 0 {
@@ -62,5 +76,27 @@ func sameRequestHost(r *http.Request, raw string) bool {
 	if err != nil || parsed.Host == "" || parsed.User != nil {
 		return false
 	}
-	return strings.EqualFold(parsed.Host, r.Host)
+	if strings.EqualFold(parsed.Host, r.Host) {
+		return true
+	}
+	// The rsbuild dev server proxies /api to another localhost port with
+	// changeOrigin, so the page origin and the backend Host differ by port.
+	// Loopback is not a cross-site boundary worth enforcing here.
+	return isLoopbackHost(parsed.Hostname()) && isLoopbackHost(requestHostname(r.Host))
+}
+
+func requestHostname(host string) string {
+	if name, _, err := net.SplitHostPort(host); err == nil {
+		return name
+	}
+	return strings.Trim(host, "[]")
+}
+
+func isLoopbackHost(host string) bool {
+	switch strings.ToLower(strings.Trim(host, "[]")) {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	default:
+		return false
+	}
 }
