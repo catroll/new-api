@@ -7573,6 +7573,24 @@
     "Self-hosted CAPTCHA": "自托管验证码",
     "Complete the image challenge before sending the SMS code": "请先完成图片验证，验证通过后才能发送短信验证码",
     "Complete the image challenge to continue": "请先完成图片验证，验证通过后才能继续",
-    "Complete the image challenge before sending a verification code": "请先完成图片验证，验证通过后才能发送验证码"
+    "Complete the image challenge before sending a verification code": "请先完成图片验证，验证通过后才能发送验证码",
+    "{{count}} unsaved price changes": "{{count}} 项未保存",
+    "Confirm and save": "确认保存",
+    "Confirm price changes": "确认价格变更",
+    "Models needing price updates: {{modelCount}}": "有 {{modelCount}} 个模型的价格需要处理",
+    "Modified": "已修改",
+    "New prices apply to requests as soon as you save. {{count}} models change.": "保存后新价格立即用于计费，共 {{count}} 个模型有变更。",
+    "Pending deletion": "待删除",
+    "Price after saving": "保存后价格",
+    "Pricing changes needed": "需要修改的内容",
+    "Review prices": "检查价格",
+    "Saved price": "已保存价格",
+    "Select this plugin below and reconfigure its price using the current billing fields, then save.": "在下方选择对应插件，按当前计费字段重新配置价格后保存。",
+    "Select this plugin below, remove its saved price, then save.": "在下方选择对应插件，移除已保存的价格，再保存更改。",
+    "Select this plugin below, set a price for this model, then save.": "在下方选择对应插件，为该模型设置价格后保存。",
+    "Show all models": "显示全部模型",
+    "These models have missing or outdated plugin prices. Select a model to see what needs to change.": "这些模型尚未设置插件价格，或已有价格已失效。选择模型可查看原因和处理方法。",
+    "Undo changes": "撤销修改",
+    "Unsaved price changes": "未保存的价格修改"
   }
 }

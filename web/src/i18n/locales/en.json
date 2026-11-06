@@ -7573,6 +7573,24 @@
     "Self-hosted CAPTCHA": "Self-hosted CAPTCHA",
     "Complete the image challenge before sending the SMS code": "Complete the image challenge before sending the SMS code",
     "Complete the image challenge to continue": "Complete the image challenge to continue",
-    "Complete the image challenge before sending a verification code": "Complete the image challenge before sending a verification code"
+    "Complete the image challenge before sending a verification code": "Complete the image challenge before sending a verification code",
+    "{{count}} unsaved price changes": "{{count}} unsaved price changes",
+    "Confirm and save": "Confirm and save",
+    "Confirm price changes": "Confirm price changes",
+    "Models needing price updates: {{modelCount}}": "Models needing price updates: {{modelCount}}",
+    "Modified": "Modified",
+    "New prices apply to requests as soon as you save. {{count}} models change.": "New prices apply to requests as soon as you save. {{count}} models change.",
+    "Pending deletion": "Pending deletion",
+    "Price after saving": "Price after saving",
+    "Pricing changes needed": "Pricing changes needed",
+    "Review prices": "Review prices",
+    "Saved price": "Saved price",
+    "Select this plugin below and reconfigure its price using the current billing fields, then save.": "Select this plugin below and reconfigure its price using the current billing fields, then save.",
+    "Select this plugin below, remove its saved price, then save.": "Select this plugin below, remove its saved price, then save.",
+    "Select this plugin below, set a price for this model, then save.": "Select this plugin below, set a price for this model, then save.",
+    "Show all models": "Show all models",
+    "These models have missing or outdated plugin prices. Select a model to see what needs to change.": "These models have missing or outdated plugin prices. Select a model to see what needs to change.",
+    "Undo changes": "Undo changes",
+    "Unsaved price changes": "Unsaved price changes"
   }
 }
