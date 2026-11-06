@@ -46,6 +46,7 @@ import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { loginFormSchema, smsLoginFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useCaptcha } from '@/features/auth/hooks/use-captcha'
+import { useSmsTrustedDevice } from '@/features/auth/hooks/use-sms-trusted-device'
 import { useSmsVerification } from '@/features/auth/hooks/use-sms-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { beginPasskeyLogin, finishPasskeyLogin } from '@/features/auth/passkey'
@@ -157,8 +158,6 @@ export function UserAuthForm({
       '+86'
   )
   const [loginMode, setLoginMode] = useState<'password' | 'sms'>('password')
-  // Password login does not need the image challenge; only SMS sending does.
-  const captcha = useCaptcha({ active: loginMode === 'sms' })
   useEffect(() => {
     if (!passwordLoginEnabled && smsLoginEnabled) {
       setLoginMode('sms')
@@ -167,6 +166,15 @@ export function UserAuthForm({
   const smsForm = useForm<z.infer<typeof smsLoginFormSchema>>({
     resolver: zodResolver(smsLoginFormSchema),
     defaultValues: { phone: '', code: '' },
+  })
+  // A number this browser already signed in with skips the image challenge.
+  const smsTrustedDevice = useSmsTrustedDevice(
+    smsForm.watch('phone'),
+    loginMode === 'sms'
+  )
+  // Password login does not need the image challenge; only SMS sending does.
+  const captcha = useCaptcha({
+    active: loginMode === 'sms' && !smsTrustedDevice,
   })
   const {
     isSending: isSendingSms,
@@ -542,12 +550,20 @@ export function UserAuthForm({
                 )}
               />
 
-              <Captcha
-                captcha={captcha}
-                hint={t(
-                  'Complete the image challenge before sending the SMS code'
-                )}
-              />
+              {smsTrustedDevice ? (
+                <p className='text-muted-foreground text-xs'>
+                  {t(
+                    'This device is trusted for this number, so no image challenge is required.'
+                  )}
+                </p>
+              ) : (
+                <Captcha
+                  captcha={captcha}
+                  hint={t(
+                    'Complete the image challenge before sending the SMS code'
+                  )}
+                />
+              )}
 
               <FormField
                 control={smsForm.control}

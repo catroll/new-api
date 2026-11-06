@@ -6499,6 +6499,7 @@
     "Truncate embeddings to this many dimensions": "将向量截断到指定维度",
     "Trusted": "受信任",
     "Trusted devices": "受信任设备",
+    "This device is trusted for this number, so no image challenge is required.": "此设备已受信任，该手机号无需图片验证。",
     "Devices that can request SMS login codes without the image challenge.": "可以在不完成图片验证的情况下请求短信登录验证码的设备。",
     "After signing in with an SMS code, this device can request future codes without the image challenge.": "使用短信验证码登录后，此设备以后请求验证码时无需完成图片验证。",
     "IP: {{ip}} · Trusted {{time}} · Expires {{expires}}": "IP：{{ip}} · 受信于 {{time}} · 到期 {{expires}}",

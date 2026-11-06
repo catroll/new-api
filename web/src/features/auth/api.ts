@@ -348,6 +348,19 @@ export async function sendSmsCode(
   return res.data
 }
 
+// Whether this browser may request a login code for the number without the
+// image challenge. Only the HttpOnly trusted-device cookie can make it true.
+export async function getSmsDeviceTrust(
+  phone: string,
+  signal?: AbortSignal
+): Promise<ApiResponse<{ trusted: boolean }>> {
+  const res = await api.get('/api/verification/sms/trusted', {
+    params: { phone },
+    signal,
+  })
+  return res.data
+}
+
 // Send a code to the number an authenticated account wants to bind.
 export async function sendBindPhoneCode(
   phone: string,
