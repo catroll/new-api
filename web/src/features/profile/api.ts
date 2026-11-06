@@ -248,6 +248,40 @@ export async function revokeOtherLoginSessions(): Promise<ApiResponse> {
 }
 
 // ============================================================================
+// Trusted Device APIs
+// ============================================================================
+
+export interface TrustedDevice {
+  id: string
+  current: boolean
+  user_agent: string
+  ip: string
+  created_at: number
+  expires_at: number
+}
+
+export async function getTrustedDevices(): Promise<
+  ApiResponse<TrustedDevice[]>
+> {
+  const res = await api.get('/api/user/trusted-devices')
+  return res.data
+}
+
+export async function revokeTrustedDevice(
+  deviceID: string
+): Promise<ApiResponse> {
+  const res = await api.delete(
+    `/api/user/trusted-devices/${encodeURIComponent(deviceID)}`
+  )
+  return res.data
+}
+
+export async function revokeAllTrustedDevices(): Promise<ApiResponse> {
+  const res = await api.post('/api/user/trusted-devices/revoke-all')
+  return res.data
+}
+
+// ============================================================================
 // Custom OAuth Binding APIs
 // ============================================================================
 
