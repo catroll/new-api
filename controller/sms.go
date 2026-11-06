@@ -137,6 +137,12 @@ func LoginWithSMS(c *gin.Context) {
 		writeSMSError(c, err)
 		return
 	}
+	// The code proves this browser controls the number. Remember the device
+	// before setupLogin writes its response headers; a 2FA challenge still
+	// follows, and the record can never authenticate anything by itself.
+	if err := service.IssueTrustedDevice(c, user, phone); err != nil {
+		common.SysLog(common.LogText("trusted device issue failed uid=%d: %v", user.Id, err))
+	}
 	setupLogin(user, nil, c)
 }
 

@@ -17,6 +17,12 @@ func CaptchaCheck() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		// A known device for this phone already passed the challenge once; the
+		// marker is only ever set on the SMS send route.
+		if c.GetBool(service.TrustedDeviceContextKey) {
+			c.Next()
+			return
+		}
 		token := strings.TrimSpace(c.GetHeader("X-Captcha"))
 		if token == "" {
 			token = strings.TrimSpace(c.Query("captcha"))

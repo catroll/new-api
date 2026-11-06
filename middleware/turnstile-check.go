@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,6 +15,12 @@ type turnstileCheckResponse struct {
 
 func TurnstileCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// TrustedDeviceCheck runs first on the SMS send route and marks a device
+		// that already passed the challenge for this phone number.
+		if c.GetBool(service.TrustedDeviceContextKey) {
+			c.Next()
+			return
+		}
 		if common.TurnstileCheckEnabled {
 			response := c.Query("turnstile")
 			if response == "" {

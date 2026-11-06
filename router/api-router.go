@@ -45,7 +45,7 @@ func SetApiRouter(router *gin.Engine) {
 		}
 		apiRouter.GET("/rankings", middleware.HeaderNavModuleAuth("rankings"), controller.GetRankings)
 		apiRouter.GET("/verification", middleware.SendEndpointOriginGuard(), middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendEmailVerification)
-		apiRouter.GET("/verification/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendSMSVerification)
+		apiRouter.GET("/verification/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TrustedDeviceCheck(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendSMSVerification)
 		apiRouter.GET("/reset_password", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendPasswordResetEmail)
 		apiRouter.GET("/reset_password/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendPasswordResetSMS)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPassword)
@@ -103,6 +103,9 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/sessions", middleware.DisableCache(), controller.GetLoginSessions)
 				selfRoute.DELETE("/sessions/:sid", middleware.DisableCache(), controller.DeleteLoginSession)
 				selfRoute.POST("/sessions/revoke-others", middleware.DisableCache(), controller.RevokeOtherLoginSessions)
+				selfRoute.GET("/trusted-devices", middleware.DisableCache(), controller.GetTrustedDevices)
+				selfRoute.DELETE("/trusted-devices/:id", middleware.DisableCache(), controller.DeleteTrustedDevice)
+				selfRoute.POST("/trusted-devices/revoke-all", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.RevokeAllTrustedDevices)
 				selfRoute.GET("/self/groups", controller.GetUserGroups)
 				selfRoute.GET("/self", controller.GetSelf)
 				selfRoute.POST("/phone/bind/code", middleware.CriticalRateLimit(), middleware.UserCriticalRateLimit("phone-bind"), middleware.CaptchaCheck(), controller.SendPhoneBindCode)
