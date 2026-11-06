@@ -7553,6 +7553,9 @@
     "Enable self-hosted CAPTCHA": "启用人机验证码",
     "Protect login, registration, and verification codes with a self-hosted image challenge": "使用自托管图片验证码保护登录、注册和验证码发送",
     "Human verification failed, please refresh and try again": "人机验证失败，请刷新后重试",
-    "Self-hosted CAPTCHA": "自托管验证码"
+    "Self-hosted CAPTCHA": "自托管验证码",
+    "Complete the image challenge before sending the SMS code": "请先完成图片验证，验证通过后才能发送短信验证码",
+    "Complete the image challenge to continue": "请先完成图片验证，验证通过后才能继续",
+    "Complete the image challenge before sending a verification code": "请先完成图片验证，验证通过后才能发送验证码"
   }
 }

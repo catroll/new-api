@@ -301,6 +301,12 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
                       })
                     : t('We will text a 6-digit code to your bound phone.')}
                 </p>
+                <Captcha
+                  captcha={captcha}
+                  hint={t(
+                    'Complete the image challenge before sending the SMS code'
+                  )}
+                />
                 <Button
                   type='button'
                   variant='outline'
@@ -314,7 +320,6 @@ export function SecureVerificationDialog(props: SecureVerificationDialogProps) {
                     ? t('Resend in {{seconds}}s', { seconds: sms.seconds })
                     : t('Send code')}
                 </Button>
-                <Captcha captcha={captcha} />
                 {sms.error && (
                   <p role='alert' className='text-destructive text-sm'>
                     {t(sms.error)}

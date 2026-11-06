@@ -24,15 +24,23 @@ import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { getCaptcha, type CaptchaChallenge } from '../api'
 
+interface UseCaptchaOptions {
+  /** Load a challenge only while the flow that needs it is open. */
+  active?: boolean
+}
+
 /**
  * Drives the self-hosted image challenge. The backend keeps the answer and
  * accepts an "id:answer" token once, so `reset()` is required after any request
  * that reaches the server.
  */
-export function useCaptcha() {
+export function useCaptcha(options?: UseCaptchaOptions) {
   // The status fetch updates this persisted store, so forms work even inside
   // dialogs rendered without a React Query provider (for example tests).
-  const isEnabled = useSystemConfigStore((state) => state.config.captchaCheck)
+  const captchaCheck = useSystemConfigStore(
+    (state) => state.config.captchaCheck
+  )
+  const isEnabled = captchaCheck && (options?.active ?? true)
   const [challenge, setChallenge] = useState<CaptchaChallenge | null>(null)
   const [code, setCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)

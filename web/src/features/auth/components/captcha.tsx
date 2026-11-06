@@ -29,9 +29,11 @@ type CaptchaState = ReturnType<typeof useCaptcha>
 interface CaptchaProps {
   captcha: CaptchaState
   className?: string
+  /** Extra explanation, for example when the challenge gates SMS sending. */
+  hint?: string
 }
 
-export function Captcha({ captcha, className }: CaptchaProps) {
+export function Captcha({ captcha, className, hint }: CaptchaProps) {
   const { t } = useTranslation()
   if (!captcha.isEnabled) return null
 
@@ -85,6 +87,9 @@ export function Captcha({ captcha, className }: CaptchaProps) {
         inputMode='text'
         aria-label={t('Human verification')}
       />
+      <p className='text-muted-foreground mt-1 text-xs'>
+        {hint ?? t('Complete the image challenge to continue')}
+      </p>
       {captcha.error ? (
         <p className='text-destructive mt-1 text-xs'>{captcha.error}</p>
       ) : null}

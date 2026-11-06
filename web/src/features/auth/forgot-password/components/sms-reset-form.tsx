@@ -186,6 +186,12 @@ export function SmsResetForm({
           )}
         />
 
+        <Captcha
+          captcha={captcha}
+          hint={t('Complete the image challenge before sending the SMS code')}
+          className='mt-2'
+        />
+
         <FormField
           control={form.control}
           name='code'
@@ -233,7 +239,6 @@ export function SmsResetForm({
             />
           </div>
         )}
-        <Captcha captcha={captcha} className='mt-2' />
       </form>
     </Form>
   )

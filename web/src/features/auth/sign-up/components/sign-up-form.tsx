@@ -362,6 +362,14 @@ export function SignUpForm({
           )}
         />
 
+        <Captcha
+          captcha={captcha}
+          hint={t(
+            'Complete the image challenge before sending a verification code'
+          )}
+          className='mt-2'
+        />
+
         {/* Email Verification Section */}
         {emailVerificationRequired && (
           <>
@@ -484,8 +492,6 @@ export function SignUpForm({
             />
           </div>
         )}
-        <Captcha captcha={captcha} className='mt-2' />
-
         <LegalConsent
           status={status}
           checked={agreedToLegal}

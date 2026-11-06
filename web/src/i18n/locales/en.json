@@ -7553,6 +7553,9 @@
     "Enable self-hosted CAPTCHA": "Enable self-hosted CAPTCHA",
     "Protect login, registration, and verification codes with a self-hosted image challenge": "Protect login, registration, and verification codes with a self-hosted image challenge",
     "Human verification failed, please refresh and try again": "Human verification failed, please refresh and try again",
-    "Self-hosted CAPTCHA": "Self-hosted CAPTCHA"
+    "Self-hosted CAPTCHA": "Self-hosted CAPTCHA",
+    "Complete the image challenge before sending the SMS code": "Complete the image challenge before sending the SMS code",
+    "Complete the image challenge to continue": "Complete the image challenge to continue",
+    "Complete the image challenge before sending a verification code": "Complete the image challenge before sending a verification code"
   }
 }

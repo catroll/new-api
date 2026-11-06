@@ -183,6 +183,10 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
           {t('Mainland numbers can be typed without the country code.')}
         </p>
       </div>
+      <Captcha
+        captcha={captcha}
+        hint={t('Complete the image challenge before sending the SMS code')}
+      />
       <div className='grid gap-2'>
         <Label htmlFor='phone-bind-code'>{t('Verification code')}</Label>
         <div className='flex gap-2'>
@@ -205,7 +209,6 @@ export function PhoneBindDialog(props: PhoneBindDialogProps) {
             {codeAction}
           </Button>
         </div>
-        <Captcha captcha={captcha} />
       </div>
     </Dialog>
   )

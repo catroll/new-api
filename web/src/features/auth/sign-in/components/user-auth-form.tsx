@@ -105,7 +105,6 @@ export function UserAuthForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
-  const captcha = useCaptcha()
   const { handleLoginResult } = useAuthRedirect()
 
   const hasUserAgreement = Boolean(status?.user_agreement_enabled)
@@ -158,6 +157,8 @@ export function UserAuthForm({
       '+86'
   )
   const [loginMode, setLoginMode] = useState<'password' | 'sms'>('password')
+  // Password login does not need the image challenge; only SMS sending does.
+  const captcha = useCaptcha({ active: loginMode === 'sms' })
   useEffect(() => {
     if (!passwordLoginEnabled && smsLoginEnabled) {
       setLoginMode('sms')
@@ -205,10 +206,8 @@ export function UserAuthForm({
     }
 
     if (!validateTurnstile()) return
-    if (!captcha.validate()) return
 
     const submittedTurnstileToken = turnstileToken
-    const submittedCaptchaToken = captcha.token
     if (isTurnstileEnabled) {
       setTurnstileToken('')
       setTurnstileWidgetKey((current) => current + 1)
@@ -220,7 +219,6 @@ export function UserAuthForm({
         username: data.username,
         password: data.password,
         turnstile: submittedTurnstileToken,
-        captcha: submittedCaptchaToken,
         passwordEncryptionEnabled: passwordLoginEncryptionEnabled,
       })
 
@@ -235,7 +233,6 @@ export function UserAuthForm({
     } catch (error: unknown) {
       handleServerError(AuthOperationError.from(error, loginFailedMessage))
     } finally {
-      if (captcha.isEnabled) captcha.reset()
       setIsLoading(false)
     }
   }
@@ -510,7 +507,7 @@ export function UserAuthForm({
             <Button
               type='submit'
               className='mt-2 w-full justify-center gap-2'
-              disabled={isLoading || !captcha.ready}
+              disabled={isLoading}
             >
               {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
               {t('Sign in')}
@@ -542,6 +539,13 @@ export function UserAuthForm({
                     </p>
                     <FormMessage />
                   </FormItem>
+                )}
+              />
+
+              <Captcha
+                captcha={captcha}
+                hint={t(
+                  'Complete the image challenge before sending the SMS code'
                 )}
               />
 
@@ -599,8 +603,6 @@ export function UserAuthForm({
             />
           </div>
         )}
-        <Captcha captcha={captcha} className='mt-2' />
-
         <LegalConsent
           status={status}
           checked={agreedToLegal}
