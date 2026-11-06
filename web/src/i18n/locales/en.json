@@ -6502,7 +6502,7 @@
     "This device is trusted for this number, so no image challenge is required.": "This device is trusted for this number, so no image challenge is required.",
     "Devices that can request SMS login codes without the image challenge.": "Devices that can request SMS login codes without the image challenge.",
     "After signing in with an SMS code, this device can request future codes without the image challenge.": "After signing in with an SMS code, this device can request future codes without the image challenge.",
-    "IP: {{ip}} · Trusted {{time}} · Expires {{expires}}": "IP: {{ip}} · Trusted {{time}} · Expires {{expires}}",
+    "Trusted {{time}} · Expires {{expires}}": "Trusted {{time}} · Expires {{expires}}",
     "Forget": "Forget",
     "Forget all": "Forget all",
     "Forget this trusted device?": "Forget this trusted device?",

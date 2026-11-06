@@ -59,7 +59,6 @@ type TrustedDeviceView struct {
 	ID        string `json:"id"`
 	Current   bool   `json:"current"`
 	UserAgent string `json:"user_agent"`
-	IP        string `json:"ip"`
 	CreatedAt int64  `json:"created_at"`
 	ExpiresAt int64  `json:"expires_at"`
 }
@@ -70,7 +69,6 @@ type trustedDeviceRecord struct {
 	SecretHash  string `json:"secret"`
 	AuthVersion int64  `json:"auth_version"`
 	UserAgent   string `json:"user_agent,omitempty"`
-	IP          string `json:"ip,omitempty"`
 	CreatedAt   int64  `json:"created_at"`
 	ExpiresAt   int64  `json:"expires_at"`
 }
@@ -363,7 +361,6 @@ func IssueTrustedDevice(c *gin.Context, user *model.User, phone string) error {
 		SecretHash:  trustedDeviceSecretHash(secret),
 		AuthVersion: user.AuthVersion,
 		UserAgent:   truncateAuthMetadata(c.Request.UserAgent(), 512),
-		IP:          truncateAuthMetadata(c.ClientIP(), 64),
 		CreatedAt:   time.Now().Unix(),
 	}
 	record.ExpiresAt = record.CreatedAt + int64(TrustedDeviceTTL/time.Second)
@@ -412,7 +409,6 @@ func rotateTrustedDevice(ctx context.Context, store trustedDeviceStore, indexKey
 	}
 	record.SecretHash = trustedDeviceSecretHash(nextSecret)
 	record.UserAgent = truncateAuthMetadata(c.Request.UserAgent(), 512)
-	record.IP = truncateAuthMetadata(c.ClientIP(), 64)
 	// Rotation extends the record, so keep the advertised expiry in step with
 	// the refreshed key TTL.
 	record.ExpiresAt = time.Now().Unix() + int64(TrustedDeviceTTL/time.Second)
@@ -540,7 +536,6 @@ func ListTrustedDevices(userID int, currentDeviceID string) ([]TrustedDeviceView
 			ID:        member,
 			Current:   member == currentDeviceID,
 			UserAgent: record.UserAgent,
-			IP:        record.IP,
 			CreatedAt: record.CreatedAt,
 			ExpiresAt: expiresAt,
 		})

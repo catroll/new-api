@@ -255,7 +255,6 @@ export interface TrustedDevice {
   id: string
   current: boolean
   user_agent: string
-  ip: string
   created_at: number
   expires_at: number
 }

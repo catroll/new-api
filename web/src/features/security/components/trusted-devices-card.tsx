@@ -182,8 +182,7 @@ export function TrustedDevicesCard() {
                   )}
                 </div>
                 <p className='text-muted-foreground mt-1 text-xs'>
-                  {t('IP: {{ip}} · Trusted {{time}} · Expires {{expires}}', {
-                    ip: device.ip || t('Unknown'),
+                  {t('Trusted {{time}} · Expires {{expires}}', {
                     time: formatTimestampRelative(
                       device.created_at,
                       'seconds',
