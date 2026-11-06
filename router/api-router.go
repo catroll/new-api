@@ -46,6 +46,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/rankings", middleware.HeaderNavModuleAuth("rankings"), controller.GetRankings)
 		apiRouter.GET("/verification", middleware.SendEndpointOriginGuard(), middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/verification/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TrustedDeviceCheck(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendSMSVerification)
+		apiRouter.GET("/verification/sms/trusted", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.CheckSMSDeviceTrust)
 		apiRouter.GET("/reset_password", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendPasswordResetEmail)
 		apiRouter.GET("/reset_password/sms", middleware.SendEndpointOriginGuard(), middleware.CriticalRateLimit(), middleware.SMSIPRateLimit(), middleware.TurnstileCheck(), middleware.CaptchaCheck(), controller.SendPasswordResetSMS)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPassword)

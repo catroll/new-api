@@ -146,6 +146,20 @@ func LoginWithSMS(c *gin.Context) {
 	setupLogin(user, nil, c)
 }
 
+// CheckSMSDeviceTrust tells the sign-in page whether this browser can request
+// a login code for the number without showing the image challenge. It is an
+// anonymous endpoint: the only thing that can make it answer true is the
+// HttpOnly trusted-device cookie, and it never reveals whether the number
+// belongs to an account.
+func CheckSMSDeviceTrust(c *gin.Context) {
+	phone := c.Query("phone")
+	trusted, err := service.ValidateTrustedDevice(c, phone)
+	if err != nil {
+		trusted = false
+	}
+	common.ApiSuccess(c, gin.H{"trusted": trusted})
+}
+
 // SendPhoneBindCode sends a code to the number the account wants to bind.
 func SendPhoneBindCode(c *gin.Context) {
 	var request smsPhoneRequest
