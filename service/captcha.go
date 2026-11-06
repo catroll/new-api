@@ -11,6 +11,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"math"
 	"math/big"
 	mathrand "math/rand"
 	"os"
@@ -31,12 +32,11 @@ const (
 	// growth bounded.
 	CaptchaTTL = 5 * time.Minute
 
-	captchaKeyPrefix    = "captcha"
-	captchaCodeLength   = 5
-	captchaAlphabet     = "abcdefghjkmnpqrstuvwxyz23456789"
-	captchaImageWidth   = 220
-	captchaImageHeight  = 80
-	captchaImagePadding = 16
+	captchaKeyPrefix   = "captcha"
+	captchaCodeLength  = 5
+	captchaAlphabet    = "abcdefghjkmnpqrstuvwxyz23456789"
+	captchaImageWidth  = 220
+	captchaImageHeight = 56
 )
 
 var (
@@ -139,18 +139,20 @@ func renderCaptchaImage(code string) ([]byte, error) {
 
 	face := newCaptchaFace()
 	for i, ch := range code {
-		dot := fixed.P(
-			captchaImagePadding+i*38+rng.Intn(5),
-			52+rng.Intn(11)-5,
-		)
-		drawer := &font.Drawer{
-			Dst:  img,
-			Src:  image.NewUniform(darkCaptchaColor(rng)),
-			Face: face,
-			Dot:  dot,
-		}
-		drawer.DrawString(string(ch))
+		glyph := renderCaptchaGlyph(face, ch, rng)
+		centerX := float64(24 + i*42 + rng.Intn(4))
+		centerY := float64(27 + rng.Intn(3))
+		angle := (rng.Float64()*2 - 1) * 0.20
+		scale := 0.92 + rng.Float64()*0.16
+		shearX := (rng.Float64()*2 - 1) * 0.18
+		shearY := (rng.Float64()*2 - 1) * 0.10
+		drawTransformedCaptchaGlyph(img, glyph, centerX, centerY, angle, scale, shearX, shearY)
 	}
+
+	// Bend the whole image with a low-frequency wave so both the glyphs and
+	// their baselines are distorted. This is deliberately mild enough to keep
+	// the answer readable for humans but defeats straight-line template OCR.
+	img = warpCaptchaImage(img, rng)
 
 	// A few lines over the glyphs make naive OCR and simple template matching
 	// less useful than the plain rendered text.
@@ -171,6 +173,158 @@ func renderCaptchaImage(code string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+const (
+	captchaGlyphCellSize        = 64
+	captchaGlyphVerticalStretch = 1.12
+)
+
+func renderCaptchaGlyph(face font.Face, ch rune, rng *mathrand.Rand) *image.RGBA {
+	const padding = 3
+	bounds, _ := font.BoundString(face, string(ch))
+	minX, minY := bounds.Min.X.Floor(), bounds.Min.Y.Floor()
+	maxX, maxY := bounds.Max.X.Ceil(), bounds.Max.Y.Ceil()
+	width := maxX - minX + padding*2
+	height := maxY - minY + padding*2
+	if width <= 0 || height <= 0 {
+		width, height = captchaGlyphCellSize, captchaGlyphCellSize
+		minX, minY = 0, 0
+	}
+	glyph := image.NewRGBA(image.Rect(0, 0, width, height))
+	drawer := &font.Drawer{
+		Dst:  glyph,
+		Src:  image.NewUniform(darkCaptchaColor(rng)),
+		Face: face,
+		Dot:  fixed.P(padding-minX, padding-minY),
+	}
+	drawer.DrawString(string(ch))
+	return glyph
+}
+
+func drawTransformedCaptchaGlyph(dst *image.RGBA, glyph *image.RGBA, centerX, centerY, angle, scale, shearX, shearY float64) {
+	cosine := math.Cos(angle)
+	sine := math.Sin(angle)
+	halfWidth := float64(glyph.Bounds().Dx()) / 2
+	halfHeight := float64(glyph.Bounds().Dy()) / 2
+	radius := math.Hypot(halfWidth, halfHeight*captchaGlyphVerticalStretch)*1.2 + 4
+	minX := captchaMaxInt(0, int(centerX-radius))
+	maxX := captchaMinInt(captchaImageWidth-1, int(centerX+radius))
+	minY := captchaMaxInt(0, int(centerY-radius))
+	maxY := captchaMinInt(captchaImageHeight-1, int(centerY+radius))
+	glyphCenterX := float64(glyph.Bounds().Dx()) / 2
+	glyphCenterY := float64(glyph.Bounds().Dy()) / 2
+
+	for y := minY; y <= maxY; y++ {
+		for x := minX; x <= maxX; x++ {
+			deltaX := (float64(x) + 0.5 - centerX) / scale
+			deltaY := (float64(y) + 0.5 - centerY) / (scale * captchaGlyphVerticalStretch)
+
+			// Inverse shear followed by inverse rotation. The forward transform
+			// shears x by y and y by x, then rotates around the glyph center.
+			unshearedX := deltaX - shearX*deltaY
+			unshearedY := deltaY - shearY*deltaX
+			rotatedX := cosine*unshearedX + sine*unshearedY
+			rotatedY := -sine*unshearedX + cosine*unshearedY
+
+			r, g, b, a := sampleCaptchaPixel(glyph, glyphCenterX+rotatedX, glyphCenterY+rotatedY)
+			if a == 0 {
+				continue
+			}
+			blendCaptchaPixel(dst, x, y, r, g, b, a)
+		}
+	}
+}
+
+func warpCaptchaImage(src *image.RGBA, rng *mathrand.Rand) *image.RGBA {
+	dst := image.NewRGBA(src.Bounds())
+	phaseX := rng.Float64() * 2 * math.Pi
+	phaseY := rng.Float64() * 2 * math.Pi
+	amplitudeX := 2.2 + rng.Float64()*1.8
+	amplitudeY := 1.6 + rng.Float64()*1.4
+	periodX := 52 + rng.Float64()*26
+	periodY := 38 + rng.Float64()*18
+
+	for y := 0; y < captchaImageHeight; y++ {
+		for x := 0; x < captchaImageWidth; x++ {
+			sourceX := float64(x) +
+				amplitudeX*math.Sin(2*math.Pi*float64(y)/periodY+phaseX) +
+				1.1*math.Sin(2*math.Pi*float64(y)/19+phaseY)
+			sourceY := float64(y) +
+				amplitudeY*math.Sin(2*math.Pi*float64(x)/periodX+phaseY)
+			r, g, b, _ := sampleCaptchaPixel(src, sourceX, sourceY)
+			dst.SetRGBA(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+		}
+	}
+	return dst
+}
+
+func sampleCaptchaPixel(img *image.RGBA, x, y float64) (uint8, uint8, uint8, uint8) {
+	bounds := img.Bounds()
+	if x < float64(bounds.Min.X) {
+		x = float64(bounds.Min.X)
+	}
+	if y < float64(bounds.Min.Y) {
+		y = float64(bounds.Min.Y)
+	}
+	if x > float64(bounds.Max.X-1) {
+		x = float64(bounds.Max.X - 1)
+	}
+	if y > float64(bounds.Max.Y-1) {
+		y = float64(bounds.Max.Y - 1)
+	}
+
+	x0 := int(math.Floor(x))
+	y0 := int(math.Floor(y))
+	x1 := captchaMinInt(x0+1, bounds.Max.X-1)
+	y1 := captchaMinInt(y0+1, bounds.Max.Y-1)
+	fx := x - float64(x0)
+	fy := y - float64(y0)
+
+	var sumAlpha, sumRed, sumGreen, sumBlue float64
+	weights := [4]float64{
+		(1 - fx) * (1 - fy), fx * (1 - fy), (1 - fx) * fy, fx * fy,
+	}
+	points := [4]image.Point{
+		{X: x0, Y: y0}, {X: x1, Y: y0}, {X: x0, Y: y1}, {X: x1, Y: y1},
+	}
+	for i, point := range points {
+		pixel := img.RGBAAt(point.X, point.Y)
+		alpha := float64(pixel.A) * weights[i]
+		sumAlpha += alpha
+		sumRed += float64(pixel.R) * alpha
+		sumGreen += float64(pixel.G) * alpha
+		sumBlue += float64(pixel.B) * alpha
+	}
+	if sumAlpha == 0 {
+		return 0, 0, 0, 0
+	}
+	return uint8(sumRed / sumAlpha), uint8(sumGreen / sumAlpha), uint8(sumBlue / sumAlpha), uint8(sumAlpha)
+}
+
+func blendCaptchaPixel(dst *image.RGBA, x, y int, r, g, b, a uint8) {
+	alpha := float64(a) / 255
+	background := dst.RGBAAt(x, y)
+	dst.SetRGBA(x, y, color.RGBA{
+		R: uint8(float64(r)*alpha + float64(background.R)*(1-alpha)),
+		G: uint8(float64(g)*alpha + float64(background.G)*(1-alpha)),
+		B: uint8(float64(b)*alpha + float64(background.B)*(1-alpha)),
+		A: 255,
+	})
+}
+
+func captchaMinInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func captchaMaxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func newCaptchaFace() font.Face {
 	captchaTypefaceOnce.Do(func() {
 		parsed, err := opentype.Parse(goregular.TTF)
@@ -180,7 +334,7 @@ func newCaptchaFace() font.Face {
 	})
 	if captchaTypeface != nil {
 		face, err := opentype.NewFace(captchaTypeface, &opentype.FaceOptions{
-			Size:    34,
+			Size:    44,
 			DPI:     72,
 			Hinting: font.HintingFull,
 		})
