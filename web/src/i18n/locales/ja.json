@@ -7591,6 +7591,8 @@
     "Show all models": "すべてのモデルを表示",
     "These models have missing or outdated plugin prices. Select a model to see what needs to change.": "これらのモデルのプラグイン価格は未設定、または古くなっています。モデルを選択すると、必要な変更を確認できます。",
     "Undo changes": "変更を元に戻す",
-    "Unsaved price changes": "未保存の価格変更"
+    "Unsaved price changes": "未保存の価格変更",
+    "Last changed: {{time}}": "Last changed: {{time}}",
+    "Rate unchanged at {{rate}}": "Rate unchanged at {{rate}}"
   }
 }

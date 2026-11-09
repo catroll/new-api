@@ -7591,6 +7591,8 @@
     "Show all models": "Hiện tất cả mô hình",
     "These models have missing or outdated plugin prices. Select a model to see what needs to change.": "Giá plugin của các mô hình này chưa được đặt hoặc đã lỗi thời. Chọn một mô hình để xem nội dung cần thay đổi.",
     "Undo changes": "Hoàn tác thay đổi",
-    "Unsaved price changes": "Thay đổi giá chưa lưu"
+    "Unsaved price changes": "Thay đổi giá chưa lưu",
+    "Last changed: {{time}}": "Last changed: {{time}}",
+    "Rate unchanged at {{rate}}": "Rate unchanged at {{rate}}"
   }
 }

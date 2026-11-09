@@ -7591,6 +7591,8 @@
     "Show all models": "Show all models",
     "These models have missing or outdated plugin prices. Select a model to see what needs to change.": "These models have missing or outdated plugin prices. Select a model to see what needs to change.",
     "Undo changes": "Undo changes",
-    "Unsaved price changes": "Unsaved price changes"
+    "Unsaved price changes": "Unsaved price changes",
+    "Last changed: {{time}}": "Last changed: {{time}}",
+    "Rate unchanged at {{rate}}": "Rate unchanged at {{rate}}"
   }
 }

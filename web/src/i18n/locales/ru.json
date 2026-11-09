@@ -7591,6 +7591,8 @@
     "Show all models": "Показать все модели",
     "These models have missing or outdated plugin prices. Select a model to see what needs to change.": "Цены плагинов для этих моделей не заданы или устарели. Выберите модель, чтобы увидеть необходимые изменения.",
     "Undo changes": "Вернуть как было",
-    "Unsaved price changes": "Несохранённые изменения цен"
+    "Unsaved price changes": "Несохранённые изменения цен",
+    "Last changed: {{time}}": "Last changed: {{time}}",
+    "Rate unchanged at {{rate}}": "Rate unchanged at {{rate}}"
   }
 }

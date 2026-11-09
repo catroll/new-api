@@ -93,7 +93,7 @@ test('refreshing the rate updates the field it just changed', async () => {
   vi.spyOn(api, 'post').mockResolvedValue({
     data: {
       success: true,
-      data: { rate: 6.681, price: 6.681, updated_at: 1793000000 },
+      data: { rate: 6.681, changed: true, price: 6.681, updated_at: 1793000000 },
     },
   })
   const user = userEvent.setup()
@@ -107,5 +107,5 @@ test('refreshing the rate updates the field it just changed', async () => {
   expect(api.post).toHaveBeenCalledWith('/api/option/exchange_rate/refresh')
   // The button updates a value it does not own the way a save does, so the page
   // has to say how fresh that value is.
-  expect(screen.getByText(/Last updated:/)).toBeInTheDocument()
+  expect(screen.getByText(/Last changed:/)).toBeInTheDocument()
 })

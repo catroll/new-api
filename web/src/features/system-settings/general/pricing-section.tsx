@@ -165,13 +165,18 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
         return
       }
       const rate = data.data?.rate
+      const changed = data.data?.changed ?? true
       if (typeof rate === 'number') {
         form.setValue('USDExchangeRate', rate, { shouldDirty: false })
         setRateUpdatedAt(data.data?.updated_at ?? Math.floor(Date.now() / 1000))
         // Everything outside this page reads the rate from /api/status.
         queryClient.invalidateQueries({ queryKey: ['status'] })
       }
-      toast.success(t('Rate updated to {{rate}}', { rate: rate ?? '-' }))
+      toast.success(
+        changed
+          ? t('Rate updated to {{rate}}', { rate: rate ?? '-' })
+          : t('Rate unchanged at {{rate}}', { rate: rate ?? '-' })
+      )
     },
     onError: () => toast.error(t('Refresh failed')),
   })
@@ -383,7 +388,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
               </span>
               <span className='text-muted-foreground ml-auto text-xs tabular-nums'>
                 {rateUpdatedAt > 0
-                  ? t('Last updated: {{time}}', {
+                  ? t('Last changed: {{time}}', {
                       time: new Date(rateUpdatedAt * 1000).toLocaleString(),
                     })
                   : t('Never updated')}

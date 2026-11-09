@@ -29,7 +29,10 @@ var ExchangeRateRefreshMinutes = 0
 // is reachable from one is not necessarily reachable from the other.
 var ExchangeRateApiUrl = "https://open.er-api.com/v6/latest/USD"
 
-// ExchangeRateUpdatedAt is the unix time of the last successful refresh. It is
+// ExchangeRateUpdatedAt is the unix time the persisted rate last changed. It is
 // written by the job, never by an administrator, and only exists so the console
-// can say how old the number it is showing is.
+// can say how old the number it is showing is. An unchanged poll leaves it alone:
+// the job logs a heartbeat instead of rewriting a row every five minutes, so a
+// timestamp that looks a day old means "the source did not move", not "the job
+// stopped".
 var ExchangeRateUpdatedAt int64 = 0

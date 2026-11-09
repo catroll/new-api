@@ -51,7 +51,14 @@ export async function refreshExchangeRate() {
   const res = await api.post<{
     success: boolean
     message?: string
-    data?: { rate: number; price: number }
+    data?: {
+      rate: number
+      changed?: boolean
+      price: number
+      updated_at?: number
+      checked_at?: number
+      next_update_at?: number
+    }
   }>('/api/option/exchange_rate/refresh')
   return res.data
 }

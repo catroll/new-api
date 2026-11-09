@@ -7591,6 +7591,8 @@
     "Show all models": "顯示全部模型",
     "These models have missing or outdated plugin prices. Select a model to see what needs to change.": "這些模型尚未設定外掛價格，或既有價格已失效。選擇模型可查看原因與處理方式。",
     "Undo changes": "復原修改",
-    "Unsaved price changes": "未儲存的價格修改"
+    "Unsaved price changes": "未儲存的價格修改",
+    "Last changed: {{time}}": "上次變化：{{time}}",
+    "Rate unchanged at {{rate}}": "匯率未變，仍為 {{rate}}"
   }
 }
