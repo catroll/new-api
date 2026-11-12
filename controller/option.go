@@ -18,6 +18,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/model_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/QuantumNous/new-api/setting/request_plugin_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/gin-gonic/gin"
@@ -86,6 +87,9 @@ var nonSensitiveOptionKeys = map[string]struct{}{
 	// Alipay's platform public key: it verifies notifications and is shared with
 	// the merchant by design.
 	"AlipayPublicKey": {},
+	// EPay's platform public key: it verifies callbacks and is published to the
+	// merchant by the platform.
+	"payment_setting.epay_platform_public_key": {},
 }
 
 func GetOptions(c *gin.Context) {
@@ -227,6 +231,11 @@ func UpdateOption(c *gin.Context) {
 	default:
 		if isPaymentComplianceOptionKey(option.Key) {
 			common.ApiErrorT(c, "Compliance confirmation fields cannot be changed through the general settings API")
+			return
+		}
+		// The request plugin API validates each instance config.
+		if option.Key == request_plugin_setting.InstancesOption {
+			common.ApiErrorT(c, "Request plugin instances cannot be changed through the general settings API")
 			return
 		}
 	}
