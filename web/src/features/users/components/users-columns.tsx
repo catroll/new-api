@@ -48,13 +48,9 @@ import { DataTableRowActions } from './data-table-row-actions'
 import { UserQuotaCell } from './user-quota-cell'
 
 export function useUsersColumns(
-  options: {
-    showPhone?: boolean
-    showEmail?: boolean
-    onShowUserInfo?: (userId: number) => void
-  } = {}
+  options: { onShowUserInfo?: (userId: number) => void } = {}
 ): ColumnDef<User>[] {
-  const { showPhone = false, showEmail = false, onShowUserInfo } = options
+  const { onShowUserInfo } = options
   const { t } = useTranslation()
   const currencyConfig = useSystemConfigStore((state) => state.config.currency)
   const { meta: currency } = getCurrencyDisplay()
@@ -159,52 +155,46 @@ export function useUsersColumns(
         size: 220,
         meta: { mobileTitle: true },
       },
-      // Contact details only exist when the matching feature is enabled: the
-      // SMS flow binds phones and email verification binds addresses. Without
-      // those features the column would be a column of dashes, so it is
-      // omitted entirely and the table keeps its width.
-      ...(showPhone || showEmail
-        ? [
-            {
-              id: 'contact',
-              header: t('Contact'),
-              cell: ({ row }) => {
-                const phone = showPhone ? row.original.phone?.trim() : ''
-                const email = showEmail ? row.original.email?.trim() : ''
+      // One contact column for both bindings. Whether a row has a phone or an
+      // email is user data, not a site switch: an account can bind either one
+      // from the security page while phone registration is on and email
+      // verification is off, so the values decide what the cell renders.
+      {
+        id: 'contact',
+        header: t('Contact'),
+        cell: ({ row }) => {
+          const phone = row.original.phone?.trim()
+          const email = row.original.email?.trim()
 
-                if (!phone && !email) {
-                  return (
-                    <span className='text-muted-foreground text-sm'>—</span>
-                  )
-                }
+          if (!phone && !email) {
+            return <span className='text-muted-foreground text-sm'>—</span>
+          }
 
-                return (
-                  <div
-                    data-table-text='secondary'
-                    className='flex min-w-0 flex-col gap-1 text-xs font-normal'
-                  >
-                    {phone && (
-                      <div className='flex min-w-0 items-center gap-1.5'>
-                        <Smartphone className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
-                        <LongText className='max-w-[160px]'>{phone}</LongText>
-                      </div>
-                    )}
-                    {email && (
-                      <div className='flex min-w-0 items-center gap-1.5'>
-                        <Mail className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
-                        <LongText className='max-w-[180px]'>{email}</LongText>
-                      </div>
-                    )}
-                  </div>
-                )
-              },
-              enableSorting: false,
-              size: 200,
-              minSize: 160,
-              meta: { mobileOrder: 15 },
-            } satisfies ColumnDef<User>,
-          ]
-        : []),
+          return (
+            <div
+              data-table-text='secondary'
+              className='flex min-w-0 flex-col gap-1 text-xs font-normal'
+            >
+              {phone && (
+                <div className='flex min-w-0 items-center gap-1.5'>
+                  <Smartphone className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                  <LongText className='max-w-[160px]'>{phone}</LongText>
+                </div>
+              )}
+              {email && (
+                <div className='flex min-w-0 items-center gap-1.5'>
+                  <Mail className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                  <LongText className='max-w-[180px]'>{email}</LongText>
+                </div>
+              )}
+            </div>
+          )
+        },
+        enableSorting: false,
+        size: 200,
+        minSize: 160,
+        meta: { mobileOrder: 15 },
+      },
       {
         accessorKey: 'status',
         header: t('Status'),
@@ -363,6 +353,6 @@ export function useUsersColumns(
     ],
     // formatQuota reads the currency configuration from the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, quotaUnit, currencyConfig, showPhone, showEmail, onShowUserInfo]
+    [t, quotaUnit, currencyConfig, onShowUserInfo]
   )
 }

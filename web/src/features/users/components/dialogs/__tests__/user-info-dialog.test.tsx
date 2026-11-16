@@ -71,54 +71,38 @@ afterEach(() => {
   apiClient.get = originalGet
 })
 
-function mockApi(status: Record<string, unknown>) {
+function mockUser(overrides: Partial<typeof user> = {}) {
   apiClient.get = async (url) => {
-    if (url === '/api/status') {
-      return { data: { success: true, data: status } }
-    }
     if (url === '/api/user/7') {
-      return { data: { success: true, data: user } }
+      return { data: { success: true, data: { ...user, ...overrides } } }
     }
     throw new Error(`unexpected request ${url}`)
   }
 }
 
-test('hides the contact rows when neither feature is enabled', async () => {
-  mockApi({ sms_enabled: false, email_verification: false })
+test('shows the bound phone number and email', async () => {
+  mockUser()
+  renderDialog()
+  const dialog = await screen.findByRole('dialog', { name: 'User Information' })
+  expect(within(dialog).getByText('Phone number')).toBeInTheDocument()
+  expect(within(dialog).getByText('+8613800138000')).toBeInTheDocument()
+  expect(within(dialog).getByText('Email')).toBeInTheDocument()
+  expect(within(dialog).getByText('support@example.com')).toBeInTheDocument()
+})
+
+test('shows only the email when no phone is bound', async () => {
+  mockUser({ phone: '' })
+  renderDialog()
+  const dialog = await screen.findByRole('dialog', { name: 'User Information' })
+  expect(within(dialog).getByText('support@example.com')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Phone number')).not.toBeInTheDocument()
+})
+
+test('hides both rows when the account has no contact binding', async () => {
+  mockUser({ phone: '', email: '' })
   renderDialog()
   const dialog = await screen.findByRole('dialog', { name: 'User Information' })
   await within(dialog).findByText('support-user')
   expect(within(dialog).queryByText('Phone number')).not.toBeInTheDocument()
   expect(within(dialog).queryByText('Email')).not.toBeInTheDocument()
-})
-
-test('shows the phone number when SMS is enabled', async () => {
-  mockApi({ sms_enabled: true, email_verification: false })
-  renderDialog()
-  const dialog = await screen.findByRole('dialog', { name: 'User Information' })
-  expect(within(dialog).getByText('Phone number')).toBeInTheDocument()
-  expect(within(dialog).getByText('+8613800138000')).toBeInTheDocument()
-  expect(within(dialog).queryByText('Email')).not.toBeInTheDocument()
-  expect(
-    within(dialog).queryByText('support@example.com')
-  ).not.toBeInTheDocument()
-})
-
-test('shows the email when email verification is enabled', async () => {
-  mockApi({ sms_enabled: false, email_verification: true })
-  renderDialog()
-  const dialog = await screen.findByRole('dialog', { name: 'User Information' })
-  expect(within(dialog).getByText('Email')).toBeInTheDocument()
-  expect(within(dialog).getByText('support@example.com')).toBeInTheDocument()
-  expect(within(dialog).queryByText('Phone number')).not.toBeInTheDocument()
-})
-
-test('shows both contact rows when both features are enabled', async () => {
-  mockApi({ sms_enabled: true, email_verification: true })
-  renderDialog()
-  const dialog = await screen.findByRole('dialog', { name: 'User Information' })
-  expect(within(dialog).getByText('Phone number')).toBeInTheDocument()
-  expect(within(dialog).getByText('+8613800138000')).toBeInTheDocument()
-  expect(within(dialog).getByText('Email')).toBeInTheDocument()
-  expect(within(dialog).getByText('support@example.com')).toBeInTheDocument()
 })

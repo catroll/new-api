@@ -79,14 +79,6 @@ async function renderUsers() {
     if (url === '/api/group/') {
       return { data: { success: true, data: ['default'] } }
     }
-    if (url === '/api/status') {
-      return {
-        data: {
-          success: true,
-          data: { sms_enabled: true, email_verification: true },
-        },
-      }
-    }
     if (url === '/api/user/7') {
       return { data: { success: true, data: user } }
     }

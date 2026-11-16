@@ -50,15 +50,8 @@ const user = {
   email: 'user@example.com',
 } as User
 
-function ContactTable(props: {
-  showPhone?: boolean
-  showEmail?: boolean
-  row?: User
-}) {
-  const columns = useUsersColumns({
-    showPhone: props.showPhone,
-    showEmail: props.showEmail,
-  }).filter((column) => column.id === 'contact')
+function ContactTable(props: { row?: User }) {
+  const columns = useUsersColumns().filter((column) => column.id === 'contact')
   const table = useReactTable({
     columns,
     data: [props.row ?? user],
@@ -96,54 +89,42 @@ function ContactTable(props: {
   )
 }
 
-function renderContact(props: {
-  showPhone?: boolean
-  showEmail?: boolean
-  row?: User
-}) {
+function renderContact(row?: User) {
   render(
     <I18nextProvider i18n={i18n}>
-      <ContactTable {...props} />
+      <ContactTable row={row} />
     </I18nextProvider>
   )
 }
 
 afterEach(cleanup)
 
-it('omits the contact column when neither phone nor email features are on', () => {
-  renderContact({})
-  expect(
-    screen.queryByRole('columnheader', { name: 'Contact' })
-  ).not.toBeInTheDocument()
-  expect(screen.queryAllByRole('cell')).toHaveLength(0)
-})
-
-it('shows only the phone number when the SMS feature is on', () => {
-  renderContact({ showPhone: true })
+it('always renders the contact column', () => {
+  renderContact()
   expect(
     screen.getByRole('columnheader', { name: 'Contact' })
   ).toBeInTheDocument()
+})
+
+it('shows both the phone number and the email when both are bound', () => {
+  renderContact()
+  expect(screen.getByText('+8613800138000')).toBeInTheDocument()
+  expect(screen.getByText('user@example.com')).toBeInTheDocument()
+})
+
+it('shows only the phone number when no email is bound', () => {
+  renderContact({ ...user, email: '' } as User)
   expect(screen.getByText('+8613800138000')).toBeInTheDocument()
   expect(screen.queryByText('user@example.com')).not.toBeInTheDocument()
 })
 
-it('shows only the email address when email verification is on', () => {
-  renderContact({ showEmail: true })
+it('shows only the email when no phone is bound', () => {
+  renderContact({ ...user, phone: '' } as User)
   expect(screen.getByText('user@example.com')).toBeInTheDocument()
   expect(screen.queryByText('+8613800138000')).not.toBeInTheDocument()
 })
 
-it('shows both values when both features are on', () => {
-  renderContact({ showPhone: true, showEmail: true })
-  expect(screen.getByText('+8613800138000')).toBeInTheDocument()
-  expect(screen.getByText('user@example.com')).toBeInTheDocument()
-})
-
-it('renders a dash when the enabled features have no stored value', () => {
-  renderContact({
-    showPhone: true,
-    showEmail: true,
-    row: { ...user, phone: '', email: '' } as User,
-  })
+it('renders a dash when the account has no contact binding', () => {
+  renderContact({ ...user, phone: '', email: '' } as User)
   expect(screen.getByText('—')).toBeInTheDocument()
 })

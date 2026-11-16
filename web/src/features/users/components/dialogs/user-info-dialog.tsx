@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +24,6 @@ import { Dialog } from '@/components/dialog'
 import { Label } from '@/components/ui/label'
 import { formatQuota, formatCompactNumber } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
-import { statusQueryOptions } from '@/lib/status-query'
 
 import { getUser } from '../../api'
 import type { User } from '../../types'
@@ -48,10 +46,9 @@ function InfoItem({ label, value }: { label: string; value: string | number }) {
 /**
  * Read-only user snapshot shared by the usage logs and the user list.
  *
- * The phone and email rows follow the features that can bind them: the SMS
- * flow for phones and email verification for addresses. Both rows stay hidden
- * when the feature is off, so the dialog does not advertise fields the site
- * cannot populate.
+ * The phone and email rows follow the account's bindings, not a site switch:
+ * an account can bind either one from the security page even while phone
+ * registration is the only enabled signup flow.
  */
 export function UserInfoDialog({
   userId,
@@ -61,12 +58,6 @@ export function UserInfoDialog({
   const { t } = useTranslation()
   const [userInfo, setUserInfo] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const { data: status } = useQuery({
-    ...statusQueryOptions,
-    enabled: open && !!userId,
-  })
-  const showPhone = Boolean(status?.sms_enabled)
-  const showEmail = Boolean(status?.email_verification)
 
   const fetchUserInfo = useCallback(
     async (id: number) => {
@@ -121,10 +112,10 @@ export function UserInfoDialog({
                 value={userInfo.display_name}
               />
             )}
-            {showPhone && userInfo.phone && (
+            {userInfo.phone && (
               <InfoItem label={t('Phone number')} value={userInfo.phone} />
             )}
-            {showEmail && userInfo.email && (
+            {userInfo.email && (
               <InfoItem label={t('Email')} value={userInfo.email} />
             )}
           </div>
