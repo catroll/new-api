@@ -68,7 +68,6 @@ export const otpFormSchema = z.object({
 // ============================================================================
 
 export const PASSWORD_MIN_LENGTH = 8
-export const PASSWORD_MAX_LENGTH = 20
 export const OTP_LENGTH = 6
 export const SMS_CODE_COUNTDOWN = 60
 export const BACKUP_CODE_LENGTH = 9 // XXXX-XXXX format
