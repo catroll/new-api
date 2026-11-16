@@ -34,6 +34,7 @@ import {
   createServerError,
   requireServerSuccess,
 } from '@/lib/server-error-message'
+import { statusQueryOptions } from '@/lib/status-query'
 
 import { getGroups, getUsers, searchUsers } from '../api'
 import {
@@ -64,7 +65,14 @@ function isDisabledUserRow(user: User) {
 
 export function UsersTable() {
   const { t } = useTranslation()
-  const columns = useUsersColumns()
+  // The contact column follows the features that create the data: SMS binds a
+  // phone number, email verification binds an address. `/api/status` is shared
+  // and cached, so this does not add a request.
+  const { data: status } = useQuery(statusQueryOptions)
+  const columns = useUsersColumns({
+    showPhone: Boolean(status?.sms_enabled),
+    showEmail: Boolean(status?.email_verification),
+  })
   const { refreshTrigger } = useUsers()
   const isMobile = useMediaQuery('(max-width: 640px)')
   const [sorting, setSorting] = useState<SortingState>([])
