@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useQuery } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,9 +25,10 @@ import { Dialog } from '@/components/dialog'
 import { Label } from '@/components/ui/label'
 import { formatQuota, formatCompactNumber } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
+import { statusQueryOptions } from '@/lib/status-query'
 
-import { getUserInfo } from '../../api'
-import type { UserInfo } from '../../types'
+import { getUser } from '../../api'
+import type { User } from '../../types'
 
 interface UserInfoDialogProps {
   userId: number | null
@@ -38,25 +40,39 @@ function InfoItem({ label, value }: { label: string; value: string | number }) {
   return (
     <div className='space-y-1.5'>
       <Label className='text-muted-foreground text-xs'>{label}</Label>
-      <div className='text-sm font-semibold'>{value}</div>
+      <div className='text-sm font-semibold break-words'>{value}</div>
     </div>
   )
 }
 
+/**
+ * Read-only user snapshot shared by the usage logs and the user list.
+ *
+ * The phone and email rows follow the features that can bind them: the SMS
+ * flow for phones and email verification for addresses. Both rows stay hidden
+ * when the feature is off, so the dialog does not advertise fields the site
+ * cannot populate.
+ */
 export function UserInfoDialog({
   userId,
   open,
   onOpenChange,
 }: UserInfoDialogProps) {
   const { t } = useTranslation()
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
+  const [userInfo, setUserInfo] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const { data: status } = useQuery({
+    ...statusQueryOptions,
+    enabled: open && !!userId,
+  })
+  const showPhone = Boolean(status?.sms_enabled)
+  const showEmail = Boolean(status?.email_verification)
 
   const fetchUserInfo = useCallback(
     async (id: number) => {
       setIsLoading(true)
       try {
-        const result = await getUserInfo(id)
+        const result = await getUser(id)
         if (result.success) {
           setUserInfo(result.data || null)
         } else {
@@ -104,6 +120,12 @@ export function UserInfoDialog({
                 label={t('Display Name')}
                 value={userInfo.display_name}
               />
+            )}
+            {showPhone && userInfo.phone && (
+              <InfoItem label={t('Phone number')} value={userInfo.phone} />
+            )}
+            {showEmail && userInfo.email && (
+              <InfoItem label={t('Email')} value={userInfo.email} />
             )}
           </div>
 

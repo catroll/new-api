@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import type { OnChangeFn, SortingState } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -45,6 +45,7 @@ import {
 } from '../constants'
 import type { User, UserSortBy } from '../types'
 import { DataTableBulkActions } from './data-table-bulk-actions'
+import { UserInfoDialog } from './dialogs/user-info-dialog'
 import { useUsersColumns } from './users-columns'
 import { useUsers } from './users-provider'
 
@@ -69,9 +70,16 @@ export function UsersTable() {
   // phone number, email verification binds an address. `/api/status` is shared
   // and cached, so this does not add a request.
   const { data: status } = useQuery(statusQueryOptions)
+  const [userInfoUserId, setUserInfoUserId] = useState<number | null>(null)
+  const [userInfoOpen, setUserInfoOpen] = useState(false)
+  const handleShowUserInfo = useCallback((userId: number) => {
+    setUserInfoUserId(userId)
+    setUserInfoOpen(true)
+  }, [])
   const columns = useUsersColumns({
     showPhone: Boolean(status?.sms_enabled),
     showEmail: Boolean(status?.email_verification),
+    onShowUserInfo: handleShowUserInfo,
   })
   const { refreshTrigger } = useUsers()
   const isMobile = useMediaQuery('(max-width: 640px)')
@@ -223,49 +231,57 @@ export function UsersTable() {
   })
 
   return (
-    <DataTablePage
-      table={table}
-      columns={columns}
-      isLoading={isLoading}
-      isFetching={isFetching}
-      emptyTitle={t('No Users Found')}
-      emptyDescription={t(
-        'No users available. Try adjusting your search or filters.'
-      )}
-      skeletonKeyPrefix='users-skeleton'
-      applyHeaderSize
-      toolbarProps={{
-        searchPlaceholder: t('Filter by username, name or email...'),
-        searchDebounceMs: 500,
-        filters: [
-          {
-            columnId: 'status',
-            title: t('Status'),
-            options: getUserStatusOptions(t),
-            singleSelect: true,
-          },
-          {
-            columnId: 'role',
-            title: t('Role'),
-            options: getUserRoleOptions(t),
-            singleSelect: true,
-          },
-          {
-            columnId: 'group',
-            title: t('User Group'),
-            options: (groupsData?.data ?? []).map((group) => ({
-              label: group,
-              value: group,
-            })),
-            singleSelect: true,
-          },
-        ],
-      }}
-      getRowClassName={(row, { isMobile }) => {
-        if (!isDisabledUserRow(row.original)) return undefined
-        return isMobile ? DISABLED_ROW_MOBILE : DISABLED_ROW_DESKTOP
-      }}
-      bulkActions={<DataTableBulkActions table={table} />}
-    />
+    <>
+      <DataTablePage
+        table={table}
+        columns={columns}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        emptyTitle={t('No Users Found')}
+        emptyDescription={t(
+          'No users available. Try adjusting your search or filters.'
+        )}
+        skeletonKeyPrefix='users-skeleton'
+        applyHeaderSize
+        toolbarProps={{
+          searchPlaceholder: t('Filter by username, name or email...'),
+          searchDebounceMs: 500,
+          filters: [
+            {
+              columnId: 'status',
+              title: t('Status'),
+              options: getUserStatusOptions(t),
+              singleSelect: true,
+            },
+            {
+              columnId: 'role',
+              title: t('Role'),
+              options: getUserRoleOptions(t),
+              singleSelect: true,
+            },
+            {
+              columnId: 'group',
+              title: t('User Group'),
+              options: (groupsData?.data ?? []).map((group) => ({
+                label: group,
+                value: group,
+              })),
+              singleSelect: true,
+            },
+          ],
+        }}
+        getRowClassName={(row, { isMobile }) => {
+          if (!isDisabledUserRow(row.original)) return undefined
+          return isMobile ? DISABLED_ROW_MOBILE : DISABLED_ROW_DESKTOP
+        }}
+        bulkActions={<DataTableBulkActions table={table} />}
+      />
+
+      <UserInfoDialog
+        userId={userInfoUserId}
+        open={userInfoOpen}
+        onOpenChange={setUserInfoOpen}
+      />
+    </>
   )
 }

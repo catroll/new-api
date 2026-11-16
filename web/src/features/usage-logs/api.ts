@@ -30,7 +30,6 @@ import type {
   GetMidjourneyLogsParams,
   GetTaskLogsParams,
   TaskArtifactsResponse,
-  UserInfo,
 } from './types'
 
 // ============================================================================
@@ -140,13 +139,6 @@ export async function exportLogs(
     throw createServerError(result)
   }
   return result.data?.count ?? 0
-}
-
-export async function getUserInfo(
-  userId: number
-): Promise<{ success: boolean; message?: string; data?: UserInfo }> {
-  const res = await api.get(`/api/user/${userId}`)
-  return res.data
 }
 
 // ============================================================================

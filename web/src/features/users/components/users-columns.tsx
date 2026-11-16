@@ -48,9 +48,13 @@ import { DataTableRowActions } from './data-table-row-actions'
 import { UserQuotaCell } from './user-quota-cell'
 
 export function useUsersColumns(
-  options: { showPhone?: boolean; showEmail?: boolean } = {}
+  options: {
+    showPhone?: boolean
+    showEmail?: boolean
+    onShowUserInfo?: (userId: number) => void
+  } = {}
 ): ColumnDef<User>[] {
-  const { showPhone = false, showEmail = false } = options
+  const { showPhone = false, showEmail = false, onShowUserInfo } = options
   const { t } = useTranslation()
   const currencyConfig = useSystemConfigStore((state) => state.config.currency)
   const { meta: currency } = getCurrencyDisplay()
@@ -107,9 +111,20 @@ export function useUsersColumns(
           return (
             <div className='flex min-w-[160px] flex-col gap-1'>
               <div className='flex items-center gap-2'>
-                <LongText className='max-w-[140px] text-sm font-normal'>
-                  {username}
-                </LongText>
+                {onShowUserInfo ? (
+                  <button
+                    type='button'
+                    title={username}
+                    className='max-w-[140px] min-w-0 truncate text-left text-sm font-normal hover:underline'
+                    onClick={() => onShowUserInfo(row.original.id)}
+                  >
+                    {username}
+                  </button>
+                ) : (
+                  <LongText className='max-w-[140px] text-sm font-normal'>
+                    {username}
+                  </LongText>
+                )}
                 {remark && (
                   <Tooltip>
                     <TooltipTrigger
@@ -348,6 +363,6 @@ export function useUsersColumns(
     ],
     // formatQuota reads the currency configuration from the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, quotaUnit, currencyConfig, showPhone, showEmail]
+    [t, quotaUnit, currencyConfig, showPhone, showEmail, onShowUserInfo]
   )
 }

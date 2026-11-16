@@ -24,9 +24,9 @@ import { SectionPageLayout } from '@/components/layout'
 import type { NavGroup } from '@/components/layout/types'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CacheStatsDialog } from '@/features/system-settings/general/channel-affinity/cache-stats-dialog'
+import { UserInfoDialog } from '@/features/users/components/dialogs/user-info-dialog'
 import { useSidebarConfig } from '@/hooks/use-sidebar-config'
 
-import { UserInfoDialog } from './components/dialogs/user-info-dialog'
 import {
   type LogsViewScope,
   UsageLogsProvider,
